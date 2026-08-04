@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 
 // ==========================================
 // 1. 型別與預設資料定義
@@ -46,7 +46,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
 ];
 
 // ==========================================
-// 2. SVG 圖示元件 (無需額外安裝圖示庫)
+// 2. SVG 圖示元件
 // ==========================================
 const PlusIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -130,7 +130,7 @@ export default function App() {
       const result = await response.json();
 
       if (result.status === 'success' && Array.isArray(result.data)) {
-        const cloudData: Transaction[] = result.data.map((item: any) => ({
+        const cloudData: Transaction[] = result.data.map((item: { id?: number | string; date?: string; amount?: number; category?: string; title?: string; payer?: string; paymentMethod?: string; note?: string }) => ({
           id: item.id || Date.now(),
           date: item.date ? String(item.date).split('T')[0] : todayStr,
           amount: Number(item.amount) || 0,
@@ -147,9 +147,10 @@ export default function App() {
       } else {
         throw new Error(result.message || '無法讀取數據');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : '請確認 API URL 是否正確並已公開部署';
       setSyncStatus('error');
-      setSyncMessage(`同步失敗: ${err.message || '請確認 API URL 是否正確並已公開部署'}`);
+      setSyncMessage(`同步失敗: ${errorMessage}`);
     } finally {
       setIsSyncing(false);
     }
@@ -179,9 +180,10 @@ export default function App() {
       } else {
         throw new Error(result.message);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : '連線失敗';
       setSyncStatus('error');
-      setSyncMessage(`雲端寫入失敗: ${err.message || '連線失敗'}`);
+      setSyncMessage(`雲端寫入失敗: ${errorMessage}`);
     } finally {
       setIsSyncing(false);
     }
@@ -250,7 +252,7 @@ export default function App() {
 
   // 刪除紀錄
   const handleDeleteTransaction = (id: number | string) => {
-    if (confirm('確定要刪除這筆紀錄嗎？')) {
+    if (window.confirm('確定要刪除這筆紀錄嗎？')) {
       setTransactions(transactions.filter(t => t.id !== id));
     }
   };
