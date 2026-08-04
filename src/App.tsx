@@ -1,8 +1,5 @@
 import React, { useState, useMemo } from 'react';
 
-// ==========================================
-// 1. 型別與預設資料定義
-// ==========================================
 interface Transaction {
   id: number | string;
   date: string;
@@ -12,8 +9,6 @@ interface Transaction {
   payer: string;
   paymentMethod: string;
   note: string;
-  isRecurring?: boolean;
-  frequency?: string;
 }
 
 interface Category {
@@ -45,9 +40,6 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
   }
 ];
 
-// ==========================================
-// 2. SVG 圖示元件
-// ==========================================
 const PlusIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
@@ -78,20 +70,15 @@ const EditIcon = () => (
   </svg>
 );
 
-// ==========================================
-// 3. 主應用程式元件
-// ==========================================
 export default function App() {
   const [categories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
-  
-  // 當前選擇年月 (格式：YYYY-MM)
+
   const currentMonthStr = new Date().toISOString().slice(0, 7);
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
 
-  // 雲端 GAS API 相關 State
   const [gasApiUrl, setGasApiUrl] = useState(() => localStorage.getItem('gas_api_url') || '');
   const [inputApiUrl, setInputApiUrl] = useState(gasApiUrl);
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
@@ -99,10 +86,9 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [syncMessage, setSyncMessage] = useState('');
 
-  // 表單與彈窗 State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTxId, setEditingTxId] = useState<number | string | null>(null);
-  
+
   const todayStr = new Date().toISOString().split('T')[0];
   const [formData, setFormData] = useState({
     date: todayStr,
@@ -114,7 +100,6 @@ export default function App() {
     note: ''
   });
 
-  // 從 Google Sheets (GAS API) 讀取資料
   const handleFetchFromCloud = async () => {
     if (!gasApiUrl) {
       setIsApiModalOpen(true);
@@ -156,7 +141,6 @@ export default function App() {
     }
   };
 
-  // 即時 POST 新增資料至 Google Sheets
   const handleSyncToCloud = async (newRecord: Transaction) => {
     if (!gasApiUrl) return;
 
@@ -189,7 +173,6 @@ export default function App() {
     }
   };
 
-  // 儲存 Google Apps Script Web App URL
   const handleSaveApiUrl = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUrl = inputApiUrl.trim();
@@ -200,7 +183,6 @@ export default function App() {
     setIsApiModalOpen(false);
   };
 
-  // 新增/修改交易紀錄
   const handleSubmitTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.amount || Number(formData.amount) <= 0) return;
@@ -250,14 +232,12 @@ export default function App() {
     });
   };
 
-  // 刪除紀錄
   const handleDeleteTransaction = (id: number | string) => {
     if (window.confirm('確定要刪除這筆紀錄嗎？')) {
       setTransactions(transactions.filter(t => t.id !== id));
     }
   };
 
-  // 編輯紀錄
   const handleEditTransaction = (tx: Transaction) => {
     setEditingTxId(tx.id);
     setFormData({
@@ -272,19 +252,17 @@ export default function App() {
     setIsModalOpen(true);
   };
 
-  // 篩選本月交易列表
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       const matchMonth = t.date.startsWith(selectedMonth);
       const matchCategory = selectedCategoryFilter === 'all' || t.category === selectedCategoryFilter;
-      const matchQuery = !searchQuery || 
-        t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const matchQuery = !searchQuery ||
+        t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.note.toLowerCase().includes(searchQuery.toLowerCase());
       return matchMonth && matchCategory && matchQuery;
     });
   }, [transactions, selectedMonth, selectedCategoryFilter, searchQuery]);
 
-  // 本月總花費計算
   const totalMonthlyAmount = useMemo(() => {
     return filteredTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
   }, [filteredTransactions]);
@@ -292,15 +270,14 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 font-sans">
       <div className="max-w-3xl mx-auto space-y-6">
-        
-        {/* Header 區塊 */}
+
         <header className="relative bg-slate-900/80 p-5 rounded-2xl border border-slate-800 backdrop-blur-md shadow-xl flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsApiModalOpen(true)}
               className={`p-2 border rounded-xl transition-all cursor-pointer ${
-                gasApiUrl 
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                gasApiUrl
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                   : 'bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse'
               }`}
               title={gasApiUrl ? "雲端已連線" : "未連線雲端 (點擊設定)"}
@@ -346,11 +323,11 @@ export default function App() {
           </button>
         </header>
 
-        {/* 同步狀態訊息提示 */}
+        {}
         {syncMessage && (
           <div className={`p-3 rounded-xl border text-xs font-medium flex items-center justify-between ${
-            syncStatus === 'error' 
-              ? 'bg-rose-500/10 text-rose-300 border-rose-500/20' 
+            syncStatus === 'error'
+              ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
               : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
           }`}>
             <div className="flex items-center gap-2">
@@ -361,7 +338,6 @@ export default function App() {
           </div>
         )}
 
-        {/* 統計面板卡片 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
             <div className="text-xs text-slate-400 font-medium">選擇月份</div>
@@ -381,7 +357,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* 搜尋與類別篩選器 */}
+        {}
         <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
@@ -402,7 +378,6 @@ export default function App() {
           </select>
         </div>
 
-        {/* 明細清單列表 */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
           <h2 className="text-sm font-bold text-slate-300 mb-2">開支明細</h2>
 
@@ -460,7 +435,7 @@ export default function App() {
           )}
         </div>
 
-        {/* Modal: 新增 / 編輯交易 */}
+        {}
         {isModalOpen && (
           <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
@@ -580,7 +555,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Modal: Google Apps Script API 設定 */}
+        {}
         {isApiModalOpen && (
           <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
