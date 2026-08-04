@@ -115,7 +115,7 @@ export default function App() {
       const result = await response.json();
 
       if (result.status === 'success' && Array.isArray(result.data)) {
-        const cloudData: Transaction[] = result.data.map((item: { id?: number | string; date?: string; amount?: number; category?: string; title?: string; payer?: string; paymentMethod?: string; note?: string }) => ({
+        const cloudData: Transaction[] = result.data.map((item: any) => ({
           id: item.id || Date.now(),
           date: item.date ? String(item.date).split('T')[0] : todayStr,
           amount: Number(item.amount) || 0,
@@ -132,8 +132,8 @@ export default function App() {
       } else {
         throw new Error(result.message || '無法讀取數據');
       }
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : '請確認 API URL 是否正確並已公開部署';
+    } catch (err: any) {
+      const errorMessage = err.message || '請確認 API URL 是否正確並已公開部署';
       setSyncStatus('error');
       setSyncMessage(`同步失敗: ${errorMessage}`);
     } finally {
@@ -164,8 +164,8 @@ export default function App() {
       } else {
         throw new Error(result.message);
       }
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : '連線失敗';
+    } catch (err: any) {
+      const errorMessage = err.message || '連線失敗';
       setSyncStatus('error');
       setSyncMessage(`雲端寫入失敗: ${errorMessage}`);
     } finally {
@@ -323,7 +323,6 @@ export default function App() {
           </button>
         </header>
 
-        {}
         {syncMessage && (
           <div className={`p-3 rounded-xl border text-xs font-medium flex items-center justify-between ${
             syncStatus === 'error'
@@ -357,7 +356,6 @@ export default function App() {
           </div>
         </div>
 
-        {}
         <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
@@ -435,7 +433,6 @@ export default function App() {
           )}
         </div>
 
-        {}
         {isModalOpen && (
           <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
@@ -555,7 +552,6 @@ export default function App() {
           </div>
         )}
 
-        {}
         {isApiModalOpen && (
           <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
