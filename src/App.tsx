@@ -5,12 +5,6 @@ import {
   ChevronDown, PieChart, Lock, ArrowUpRight, CheckCircle2, Clock
 } from 'lucide-react';
 
-// 取得本地時區的 YYYY-MM-DD
-const getLocalDateString = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
 // 預設類別、顏色與常規標題選項
 const INITIAL_CATEGORIES = [
   { id: 'cat_1', name: '住屋交通', color: '#6366f1', defaultTitles: ['供樓', '水費', '電費', '煤氣費', '管理費', '停車場', '車費', '汽油'] },
@@ -25,8 +19,15 @@ const INITIAL_CATEGORIES = [
 const PAYERS = ['YSK', 'FMH'];
 const PAYMENT_METHODS = ['信用卡', '現金', '轉賬', 'Alipay'];
 
+// 取得本地時區的 YYYY-MM-DD (避免 UTC 時差倒退一天)
+const getLocalDateString = (d = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function App() {
-  // --- State ---
   const [gasUrl, setGasUrl] = useState(() => localStorage.getItem('gas_app_url') || '');
   const [showUrlModal, setShowUrlModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -34,10 +35,7 @@ export default function App() {
 
   // 資料狀態
   const [transactions, setTransactions] = useState([]);
-  const [recurringExpenses, setRecurringExpenses] = useState([
-    { id: 'rec_1', title: '供樓', amount: 30000, category: '住屋交通', payer: 'FMH', paymentMethod: '轉賬', note: '房屋按揭', frequency: 'Monthly', dayOfMonth: 30 },
-    { id: 'rec_2', title: '工人薪金', amount: 4800, category: '工人', payer: 'YSK', paymentMethod: '轉賬', note: '合約薪資', frequency: 'Monthly', dayOfMonth: 1 },
-  ]);
+  const [recurringExpenses, setRecurringExpenses] = useState([]);
 
   const [categories, setCategories] = useState(() => {
     const saved = localStorage.getItem('app_categories');
@@ -92,7 +90,7 @@ export default function App() {
     localStorage.setItem('app_categories', JSON.stringify(categories));
   }, [categories]);
 
-  // 載入資料
+  // 從 Google Sheets (GAS) 載入資料
   const loadDataFromGAS = async (url = gasUrl) => {
     if (!url) {
       setShowUrlModal(true);
@@ -104,9 +102,65 @@ export default function App() {
       const res = await fetch(url);
       const json = await res.json();
       if (json.status === 'success') {
-        setTransactions(json.data || []);
-        setRecurringExpenses(json.recurring || []);
-        setStatusMsg({ type: 'success', text: '數據同步成功！' });
+        // 1. 自動相容 json.transactions、json.data 或舊版格式
+        const rawTrans = json.transactions || json.data || [];
+        
+        // 2. 自動清理與標準化：相容大小寫欄位與日期格式
+        const normalizedTrans = rawTrans.map(t => {
+          const dateVal = t.date || t.Date || t['日期'] || '';
+          const amountVal = t.amount !== undefined ? t.amount : (t.Amount !== undefined ? t.Amount : t['金額']);
+          const titleVal = t.title || t.Title || t['項目標題'] || t['項目'] || '';
+          const categoryVal = t.category || t.Category || t['類別'] || '其他';
+          const payerVal = t.payer || t.Payer || t['付款人'] || '';
+          const paymentMethodVal = t.paymentMethod || t.PaymentMethod || t['付款方式'] || '';
+          const noteVal = t.note || t.Note || t['備註'] || '';
+
+          // 強制轉換成 YYYY-MM-DD
+          let cleanDate = '';
+          if (dateVal) {
+            const str = String(dateVal).replace(/\//g, '-').split('T')[0].trim();
+            const parts = str.split('-');
+            if (parts.length === 3) {
+              const y = parts[0];
+              const m = String(parts[1]).padStart(2, '0');
+              const d = String(parts[2]).padStart(2, '0');
+              cleanDate = `${y}-${m}-${d}`;
+            } else {
+              cleanDate = str;
+            }
+          }
+
+          return {
+            ...t,
+            id: t.id || 't_' + Math.random().toString(36).substring(2, 9),
+            date: cleanDate,
+            amount: parseFloat(amountVal) || 0,
+            title: titleVal,
+            category: categoryVal,
+            payer: payerVal,
+            paymentMethod: paymentMethodVal,
+            note: noteVal
+          };
+        });
+
+        setTransactions(normalizedTrans);
+
+        // 3. 同步標準化恆常開支
+        if (json.recurring !== undefined) {
+          const normalizedRec = (json.recurring || []).map(r => ({
+            ...r,
+            id: r.id || 'rec_' + Math.random().toString(36).substring(2, 9),
+            title: r.title || r.Title || '',
+            amount: parseFloat(r.amount || r.Amount || 0),
+            category: r.category || r.Category || '其他',
+            payer: r.payer || r.Payer || '',
+            paymentMethod: r.paymentMethod || r.PaymentMethod || '',
+            dayOfMonth: parseInt(r.dayOfMonth || r.DayOfMonth || 1)
+          }));
+          setRecurringExpenses(normalizedRec);
+        }
+
+        setStatusMsg({ type: 'success', text: `數據同步成功！共載入 ${normalizedTrans.length} 筆明細` });
         setTimeout(() => setStatusMsg({ type: '', text: '' }), 3000);
       } else {
         throw new Error(json.message || '無法取得數據');
@@ -177,7 +231,6 @@ export default function App() {
       note: ''
     });
 
-    // 如果有 GAS URL 則寫入雲端
     if (gasUrl) {
       setLoading(true);
       try {
@@ -207,18 +260,16 @@ export default function App() {
     if (!newRec.amount || !newRec.title) return;
     
     const payload = {
-      action: 'addRecurring', // 告訴後端這是新增恆常開支
+      action: 'addRecurring',
       ...newRec,
       amount: parseFloat(newRec.amount),
       dayOfMonth: parseInt(newRec.dayOfMonth) || 1
     };
 
-    // 前端搶先更新 (Optimistic UI) 讓使用者感覺順暢
     const tempId = 'rec_' + Date.now();
     setRecurringExpenses(prev => [...prev, { ...payload, id: tempId }]);
     setShowRecurringModal(false);
 
-    // 清空表單
     setNewRec({
       amount: '',
       category: categories[0]?.name || '其他',
@@ -241,7 +292,7 @@ export default function App() {
         });
         const resJson = await res.json();
         if (resJson.status === 'success') {
-          loadDataFromGAS(); // 寫入成功後重新拉取資料，確保 ID 與 Google Sheet 對齊
+          loadDataFromGAS();
         } else {
           alert('恆常開支寫入失敗：' + resJson.message);
         }
@@ -252,12 +303,11 @@ export default function App() {
       }
     }
   };
-  
-  //刪除恆常開支
+
+  // 刪除恆常開支
   const handleDeleteRecurring = async (id) => {
     if (!window.confirm('確定要刪除這筆恆常開支嗎？')) return;
     
-    // 前端先刪除畫面上的項目
     setRecurringExpenses(prev => prev.filter(r => r.id !== id));
     
     if (gasUrl) {
@@ -272,7 +322,7 @@ export default function App() {
         const resJson = await res.json();
         if (resJson.status !== 'success') {
           alert('刪除失敗：' + resJson.message);
-          loadDataFromGAS(); // 若刪除失敗，從雲端拉回原本的資料
+          loadDataFromGAS();
         }
       } catch (err) {
         alert('刪除請求失敗：' + err.message);
@@ -282,7 +332,7 @@ export default function App() {
       }
     }
   };
-  
+
   // 新增自訂類別
   const handleAddCategory = () => {
     if (!newCatName.trim()) return;
@@ -311,7 +361,6 @@ export default function App() {
     setCategories(prev => prev.filter(c => c.id !== catId));
   };
 
-  // --- 計算當月資料 ---
   const formattedMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
   const currentMonthTransactions = useMemo(() => {
@@ -321,17 +370,14 @@ export default function App() {
     });
   }, [transactions, formattedMonthStr]);
 
-  // 總開支
   const totalExpense = useMemo(() => {
     return currentMonthTransactions.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
   }, [currentMonthTransactions]);
 
-  // 恆常總開支
   const totalRecurringExpense = useMemo(() => {
     return recurringExpenses.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
   }, [recurringExpenses]);
 
-  // 類別統計金額
   const categoryBreakdown = useMemo(() => {
     const map = {};
     categories.forEach(c => { map[c.name] = 0; });
@@ -352,7 +398,6 @@ export default function App() {
     }));
   }, [currentMonthTransactions, categories, totalExpense]);
 
-  // 根據搜尋與類別篩選列表
   const filteredTransactions = useMemo(() => {
     return currentMonthTransactions.filter(t => {
       const matchCategory = selectedCategoryFilter === 'ALL' || t.category === selectedCategoryFilter;
@@ -366,7 +411,6 @@ export default function App() {
     });
   }, [currentMonthTransactions, selectedCategoryFilter, searchQuery]);
 
-  // 切換月份
   const handlePrevMonth = () => {
     if (currentMonth === 1) {
       setCurrentYear(prev => prev - 1);
@@ -378,20 +422,18 @@ export default function App() {
 
   const handleNextMonth = () => {
     if (currentMonth === 12) {
-      setCurrentYear(prev => prev + 1);
+      setCurrentYear(prev + 1);
       setCurrentMonth(1);
     } else {
       setCurrentMonth(prev => prev + 1);
     }
   };
 
-  // 取得該類別的輔助顏色
   const getCategoryColor = (catName) => {
     const found = categories.find(c => c.name === catName);
     return found ? found.color : '#8b5cf6';
   };
 
-  // 當前選取類別的熱門標題列表
   const currentCategoryTitles = useMemo(() => {
     const found = categories.find(c => c.name === newTrans.category);
     return found ? (found.defaultTitles || []) : [];
@@ -401,7 +443,7 @@ export default function App() {
     <div className="min-h-screen bg-[#0d1117] text-slate-100 font-sans p-3 sm:p-6 md:p-8">
       <div className="max-w-5xl mx-auto space-y-6">
 
-        {/* --- 頂部 Header --- */}
+        {/* 頂部 Header */}
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
           <div className="flex items-center space-x-3">
             <button 
@@ -475,7 +517,7 @@ export default function App() {
           </div>
         )}
 
-        {/* --- 功能按鈕區 --- */}
+        {/* 功能按鈕區 */}
         <div className="flex flex-wrap items-center gap-3">
           <button 
             onClick={() => setShowAddModal(true)}
@@ -494,7 +536,7 @@ export default function App() {
           </button>
         </div>
 
-        {/* --- 資訊統計卡片 --- */}
+        {/* 資訊統計卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 relative overflow-hidden backdrop-blur-sm">
             <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
@@ -524,7 +566,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* --- 類別比例 (Category Breakdown) --- */}
+        {/* 類別比例 */}
         <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
           <h2 className="text-base font-semibold text-white mb-4 flex items-center justify-between">
             <span>開支類別比例 (Category Breakdown)</span>
@@ -557,9 +599,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* --- 支出明細列表 --- */}
+        {/* 支出明細列表 */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
-          {/* 搜尋與過濾 Bar */}
           <div className="p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               支出明細列表
@@ -592,7 +633,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* 列表內容 */}
           <div className="divide-y divide-slate-800/60">
             {filteredTransactions.length === 0 ? (
               <div className="p-12 text-center text-slate-500">
@@ -648,9 +688,7 @@ export default function App() {
 
       </div>
 
-      {/* ========================================================================= */}
       {/* MODAL 1: 新增記帳 */}
-      {/* ========================================================================= */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -667,7 +705,6 @@ export default function App() {
             </h3>
 
             <form onSubmit={handleAddTransaction} className="space-y-4">
-              {/* 日期 */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">日期 (date)</label>
                 <input 
@@ -679,7 +716,6 @@ export default function App() {
                 />
               </div>
 
-              {/* 金額 */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">金額 (amount)</label>
                 <div className="relative">
@@ -696,7 +732,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 類別 */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">類別 (category)</label>
                 <select 
@@ -710,7 +745,6 @@ export default function App() {
                 </select>
               </div>
 
-              {/* 項目名稱 / 熱門標題選擇 */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">項目標題 (title)</label>
                 <input 
@@ -722,7 +756,6 @@ export default function App() {
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
                 />
 
-                {/* 熱門預設標題按鈕 */}
                 {currentCategoryTitles.length > 0 && (
                   <div className="mt-2">
                     <span className="text-[11px] text-slate-500 block mb-1">快速選取熱門標題：</span>
@@ -742,7 +775,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* 付款人 payer */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">付款人 (payer)</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -763,10 +795,8 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 付款方式 paymentMethod */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">付款方式 (paymentMethod)</label>
-                
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   {PAYMENT_METHODS.map(pm => (
                     <button
@@ -784,7 +814,6 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* 自訂付款方式 */}
                 <div className="mt-1">
                   <input 
                     type="text"
@@ -802,7 +831,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 備註 */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">備註 (note)</label>
                 <input 
@@ -828,9 +856,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ========================================================================= */}
       {/* MODAL 2: 恆常開支管理 */}
-      {/* ========================================================================= */}
       {showRecurringModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -849,7 +875,6 @@ export default function App() {
               設定每月扣款日 (`dayOfMonth`)，GAS 每日排程自動產生交易至記帳本。
             </p>
 
-            {/* 新增恆常支出表單 */}
             <form onSubmit={handleAddRecurring} className="bg-slate-950 border border-slate-800/80 p-4 rounded-xl space-y-3 mb-6">
               <div className="text-xs font-semibold text-indigo-300">新增恆常開支設定：</div>
               <div className="grid grid-cols-2 gap-3">
@@ -925,7 +950,6 @@ export default function App() {
               </div>
             </form>
 
-            {/* 現有恆常開支清單 */}
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {recurringExpenses.map(item => (
                 <div key={item.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center justify-between text-xs">
@@ -956,9 +980,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ========================================================================= */}
       {/* MODAL 3: 類別與顏色設定 */}
-      {/* ========================================================================= */}
       {showCategoryModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -974,7 +996,6 @@ export default function App() {
               類別與熱門標題管理
             </h3>
 
-            {/* 新增類別 */}
             <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl mb-4 space-y-2">
               <div className="text-xs font-semibold text-slate-300">新增分類與快速標題：</div>
               <div className="flex items-center gap-2">
@@ -1007,7 +1028,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* 現有類別列表 */}
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {categories.map(cat => (
                 <div key={cat.id} className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center justify-between">
@@ -1033,9 +1053,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ========================================================================= */}
       {/* MODAL 4: 設定 GAS API URL */}
-      {/* ========================================================================= */}
       {showUrlModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
