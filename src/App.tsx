@@ -5,6 +5,12 @@ import {
   ChevronDown, PieChart, Lock, ArrowUpRight, CheckCircle2, Clock
 } from 'lucide-react';
 
+// 取得本地時區的 YYYY-MM-DD
+const getLocalDateString = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 // 預設類別、顏色與常規標題選項
 const INITIAL_CATEGORIES = [
   { id: 'cat_1', name: '住屋交通', color: '#6366f1', defaultTitles: ['供樓', '水費', '電費', '煤氣費', '管理費', '停車場', '車費', '汽油'] },
@@ -53,7 +59,7 @@ export default function App() {
 
   // 新增交易表單 State
   const [newTrans, setNewTrans] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalDateString(),
     amount: '',
     category: INITIAL_CATEGORIES[0].name,
     title: '',
@@ -158,7 +164,7 @@ export default function App() {
 
     // 重置表單
     setNewTrans({
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalDateString(),
       amount: '',
       category: categories[0]?.name || '其他',
       title: '',
