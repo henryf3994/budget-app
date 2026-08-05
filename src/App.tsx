@@ -202,7 +202,7 @@ export default function App() {
   };
 
   // 新增恆常開支
-const handleAddRecurring = async (e) => {
+  const handleAddRecurring = async (e) => {
     e.preventDefault();
     if (!newRec.amount || !newRec.title) return;
     
@@ -252,7 +252,37 @@ const handleAddRecurring = async (e) => {
       }
     }
   };
-
+  
+  //刪除恆常開支
+  const handleDeleteRecurring = async (id) => {
+    if (!window.confirm('確定要刪除這筆恆常開支嗎？')) return;
+    
+    // 前端先刪除畫面上的項目
+    setRecurringExpenses(prev => prev.filter(r => r.id !== id));
+    
+    if (gasUrl) {
+      setLoading(true);
+      try {
+        const res = await fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          redirect: 'follow',
+          body: JSON.stringify({ action: 'deleteRecurring', id: id })
+        });
+        const resJson = await res.json();
+        if (resJson.status !== 'success') {
+          alert('刪除失敗：' + resJson.message);
+          loadDataFromGAS(); // 若刪除失敗，從雲端拉回原本的資料
+        }
+      } catch (err) {
+        alert('刪除請求失敗：' + err.message);
+        loadDataFromGAS();
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+  
   // 新增自訂類別
   const handleAddCategory = () => {
     if (!newCatName.trim()) return;
