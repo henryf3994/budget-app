@@ -105,6 +105,7 @@ export default function App() {
       const json = await res.json();
       if (json.status === 'success') {
         setTransactions(json.data || []);
+        setRecurringExpenses(json.recurring || []);
         setStatusMsg({ type: 'success', text: '數據同步成功！' });
         setTimeout(() => setStatusMsg({ type: '', text: '' }), 3000);
       } else {
@@ -148,6 +149,7 @@ export default function App() {
     }
 
     const payload = {
+      action: 'addTransaction',
       date: newTrans.date,
       amount: parseFloat(newTrans.amount),
       category: newTrans.category,
@@ -200,17 +202,23 @@ export default function App() {
   };
 
   // 新增恆常開支
-  const handleAddRecurring = (e) => {
+const handleAddRecurring = async (e) => {
     e.preventDefault();
     if (!newRec.amount || !newRec.title) return;
-    const item = {
+    
+    const payload = {
+      action: 'addRecurring', // 告訴後端這是新增恆常開支
       ...newRec,
-      id: 'rec_' + Date.now(),
       amount: parseFloat(newRec.amount),
       dayOfMonth: parseInt(newRec.dayOfMonth) || 1
     };
-    setRecurringExpenses(prev => [...prev, item]);
+
+    // 前端搶先更新 (Optimistic UI) 讓使用者感覺順暢
+    const tempId = 'rec_' + Date.now();
+    setRecurringExpenses(prev => [...prev, { ...payload, id: tempId }]);
     setShowRecurringModal(false);
+
+    // 清空表單
     setNewRec({
       amount: '',
       category: categories[0]?.name || '其他',
@@ -221,6 +229,28 @@ export default function App() {
       frequency: 'Monthly',
       dayOfMonth: 1
     });
+
+    if (gasUrl) {
+      setLoading(true);
+      try {
+        const res = await fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          redirect: 'follow',
+          body: JSON.stringify(payload)
+        });
+        const resJson = await res.json();
+        if (resJson.status === 'success') {
+          loadDataFromGAS(); // 寫入成功後重新拉取資料，確保 ID 與 Google Sheet 對齊
+        } else {
+          alert('恆常開支寫入失敗：' + resJson.message);
+        }
+      } catch (err) {
+        alert('發送至 Google Sheets 時發生錯誤：' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   // 新增自訂類別
@@ -883,7 +913,7 @@ export default function App() {
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-indigo-300">HK$ {item.amount}</span>
                     <button 
-                      onClick={() => setRecurringExpenses(prev => prev.filter(r => r.id !== item.id))}
+                      onClick={() => handleDeleteRecurring(item.id)}
                       className="text-slate-500 hover:text-rose-400"
                     >
                       <Trash2 className="w-4 h-4" />
