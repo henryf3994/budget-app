@@ -5,13 +5,6 @@ import {
   ChevronDown, PieChart, Lock, ArrowUpRight, CheckCircle2, Clock
 } from 'lucide-react';
 
-// 取得本地時區的 YYYY-MM-DD
-const getLocalDateString = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-// 預設類別、顏色與常規標題選項
 const INITIAL_CATEGORIES = [
   { id: 'cat_1', name: '住屋交通', color: '#6366f1', defaultTitles: ['供樓', '水費', '電費', '煤氣費', '管理費', '停車場', '車費', '汽油'] },
   { id: 'cat_2', name: '保險訂閱', color: '#3b82f6', defaultTitles: ['人壽保險', '醫療保險', 'Netflix', 'Spotify', 'iCloud', 'YouTube Premium'] },
@@ -25,39 +18,37 @@ const INITIAL_CATEGORIES = [
 const PAYERS = ['YSK', 'FMH'];
 const PAYMENT_METHODS = ['信用卡', '現金', '轉賬', 'Alipay'];
 
+const getLocalDateString = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 export default function App() {
-  // --- State ---
   const [gasUrl, setGasUrl] = useState(() => localStorage.getItem('gas_app_url') || '');
   const [showUrlModal, setShowUrlModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
 
-  // 資料狀態
   const [transactions, setTransactions] = useState([]);
-  const [recurringExpenses, setRecurringExpenses] = useState([
-    { id: 'rec_1', title: '供樓', amount: 30000, category: '住屋交通', payer: 'FMH', paymentMethod: '轉賬', note: '房屋按揭', frequency: 'Monthly', dayOfMonth: 30 },
-    { id: 'rec_2', title: '工人薪金', amount: 4800, category: '工人', payer: 'YSK', paymentMethod: '轉賬', note: '合約薪資', frequency: 'Monthly', dayOfMonth: 1 },
-  ]);
-
+  const [recurringExpenses, setRecurringExpenses] = useState([]);
   const [categories, setCategories] = useState(() => {
     const saved = localStorage.getItem('app_categories');
     return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
   });
 
-  // 日期選擇器狀態 (預設目前年月)
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
 
-  // Modals 控制
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRecurringModal, setShowRecurringModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
 
-  // 篩選與搜尋
+  // 編輯交易 Modal 狀態
+  const [editingTransaction, setEditingTransaction] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('ALL');
 
-  // 新增交易表單 State
   const [newTrans, setNewTrans] = useState({
     date: getLocalDateString(),
     amount: '',
@@ -70,7 +61,6 @@ export default function App() {
     note: ''
   });
 
-  // 新增恆常支出表單 State
   const [newRec, setNewRec] = useState({
     amount: '',
     category: INITIAL_CATEGORIES[0].name,
@@ -82,17 +72,14 @@ export default function App() {
     dayOfMonth: 1
   });
 
-  // 新增/修改類別 State
   const [newCatName, setNewCatName] = useState('');
   const [newCatColor, setNewCatColor] = useState('#3b82f6');
   const [newCatTitles, setNewCatTitles] = useState('');
 
-  // 儲存類別設定至 localStorage
   useEffect(() => {
     localStorage.setItem('app_categories', JSON.stringify(categories));
   }, [categories]);
 
-  // 載入資料
   const loadDataFromGAS = async (url = gasUrl) => {
     if (!url) {
       setShowUrlModal(true);
@@ -104,8 +91,10 @@ export default function App() {
       const res = await fetch(url);
       const json = await res.json();
       if (json.status === 'success') {
-        setTransactions(json.data || []);
-        setRecurringExpenses(json.recurring || []);
+        setTransactions(json.transactions || json.data || []);
+        if (json.recurring !== undefined) {
+          setRecurringExpenses(json.recurring);
+        }
         setStatusMsg({ type: 'success', text: '數據同步成功！' });
         setTimeout(() => setStatusMsg({ type: '', text: '' }), 3000);
       } else {
@@ -125,22 +114,17 @@ export default function App() {
     }
   }, []);
 
-  // 儲存 GAS URL
   const handleSaveUrl = () => {
     localStorage.setItem('gas_app_url', gasUrl);
     setShowUrlModal(false);
     loadDataFromGAS(gasUrl);
   };
 
-  // 當選擇類別切換時，更新單據對應類別
   const handleCategoryChangeForNewTrans = (catName) => {
-    setNewTrans(prev => ({
-      ...prev,
-      category: catName,
-    }));
+    setNewTrans(prev => ({ ...prev, category: catName }));
   };
 
-  // 提交新增交易
+  // 新增交易
   const handleAddTransaction = async (e) => {
     e.preventDefault();
     if (!newTrans.amount || !newTrans.title) {
@@ -159,12 +143,10 @@ export default function App() {
       note: newTrans.note
     };
 
-    // 本地先更新預覽
     const tempId = 'temp_' + Date.now();
     setTransactions(prev => [{ ...payload, id: tempId }, ...prev]);
     setShowAddModal(false);
 
-    // 重置表單
     setNewTrans({
       date: getLocalDateString(),
       amount: '',
@@ -177,7 +159,6 @@ export default function App() {
       note: ''
     });
 
-    // 如果有 GAS URL 則寫入雲端
     if (gasUrl) {
       setLoading(true);
       try {
@@ -194,7 +175,74 @@ export default function App() {
           alert('寫入失敗：' + resJson.message);
         }
       } catch (err) {
-        alert('發送至 Google Sheets 時發生錯誤：' + err.message);
+        alert('發生錯誤：' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // 刪除一般交易
+  const handleDeleteTransaction = async (id) => {
+    if (!window.confirm('確定要刪除這筆支出紀錄嗎？')) return;
+
+    setTransactions(prev => prev.filter(t => t.id !== id));
+
+    if (gasUrl) {
+      setLoading(true);
+      try {
+        const res = await fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          redirect: 'follow',
+          body: JSON.stringify({ action: 'deleteTransaction', id: id })
+        });
+        const resJson = await res.json();
+        if (resJson.status !== 'success') {
+          alert('刪除失敗：' + resJson.message);
+          loadDataFromGAS();
+        }
+      } catch (err) {
+        alert('刪除請求失敗：' + err.message);
+        loadDataFromGAS();
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // 提交修改一般交易
+  const handleUpdateTransaction = async (e) => {
+    e.preventDefault();
+    if (!editingTransaction) return;
+
+    const payload = {
+      action: 'editTransaction',
+      ...editingTransaction,
+      amount: parseFloat(editingTransaction.amount)
+    };
+
+    // 前端即時更新
+    setTransactions(prev => prev.map(t => t.id === payload.id ? payload : t));
+    setEditingTransaction(null);
+
+    if (gasUrl) {
+      setLoading(true);
+      try {
+        const res = await fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          redirect: 'follow',
+          body: JSON.stringify(payload)
+        });
+        const resJson = await res.json();
+        if (resJson.status === 'success') {
+          loadDataFromGAS();
+        } else {
+          alert('更新失敗：' + resJson.message);
+        }
+      } catch (err) {
+        alert('更新請求失敗：' + err.message);
       } finally {
         setLoading(false);
       }
@@ -207,18 +255,16 @@ export default function App() {
     if (!newRec.amount || !newRec.title) return;
     
     const payload = {
-      action: 'addRecurring', // 告訴後端這是新增恆常開支
+      action: 'addRecurring',
       ...newRec,
       amount: parseFloat(newRec.amount),
       dayOfMonth: parseInt(newRec.dayOfMonth) || 1
     };
 
-    // 前端搶先更新 (Optimistic UI) 讓使用者感覺順暢
     const tempId = 'rec_' + Date.now();
     setRecurringExpenses(prev => [...prev, { ...payload, id: tempId }]);
     setShowRecurringModal(false);
 
-    // 清空表單
     setNewRec({
       amount: '',
       category: categories[0]?.name || '其他',
@@ -241,23 +287,22 @@ export default function App() {
         });
         const resJson = await res.json();
         if (resJson.status === 'success') {
-          loadDataFromGAS(); // 寫入成功後重新拉取資料，確保 ID 與 Google Sheet 對齊
+          loadDataFromGAS();
         } else {
           alert('恆常開支寫入失敗：' + resJson.message);
         }
       } catch (err) {
-        alert('發送至 Google Sheets 時發生錯誤：' + err.message);
+        alert('發生錯誤：' + err.message);
       } finally {
         setLoading(false);
       }
     }
   };
-  
-  //刪除恆常開支
+
+  // 刪除恆常開支
   const handleDeleteRecurring = async (id) => {
     if (!window.confirm('確定要刪除這筆恆常開支嗎？')) return;
     
-    // 前端先刪除畫面上的項目
     setRecurringExpenses(prev => prev.filter(r => r.id !== id));
     
     if (gasUrl) {
@@ -272,7 +317,7 @@ export default function App() {
         const resJson = await res.json();
         if (resJson.status !== 'success') {
           alert('刪除失敗：' + resJson.message);
-          loadDataFromGAS(); // 若刪除失敗，從雲端拉回原本的資料
+          loadDataFromGAS();
         }
       } catch (err) {
         alert('刪除請求失敗：' + err.message);
@@ -282,8 +327,7 @@ export default function App() {
       }
     }
   };
-  
-  // 新增自訂類別
+
   const handleAddCategory = () => {
     if (!newCatName.trim()) return;
     const defaultTitlesArr = newCatTitles
@@ -302,7 +346,6 @@ export default function App() {
     setNewCatTitles('');
   };
 
-  // 刪除類別
   const handleDeleteCategory = (catId) => {
     if (categories.length <= 1) {
       alert('最少需保留一個類別！');
@@ -311,27 +354,23 @@ export default function App() {
     setCategories(prev => prev.filter(c => c.id !== catId));
   };
 
-  // --- 計算當月資料 ---
   const formattedMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
   const currentMonthTransactions = useMemo(() => {
     return transactions.filter(t => {
       if (!t.date) return false;
-      return t.date.startsWith(formattedMonthStr);
+      return String(t.date).startsWith(formattedMonthStr);
     });
   }, [transactions, formattedMonthStr]);
 
-  // 總開支
   const totalExpense = useMemo(() => {
     return currentMonthTransactions.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
   }, [currentMonthTransactions]);
 
-  // 恆常總開支
   const totalRecurringExpense = useMemo(() => {
     return recurringExpenses.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
   }, [recurringExpenses]);
 
-  // 類別統計金額
   const categoryBreakdown = useMemo(() => {
     const map = {};
     categories.forEach(c => { map[c.name] = 0; });
@@ -352,7 +391,6 @@ export default function App() {
     }));
   }, [currentMonthTransactions, categories, totalExpense]);
 
-  // 根據搜尋與類別篩選列表
   const filteredTransactions = useMemo(() => {
     return currentMonthTransactions.filter(t => {
       const matchCategory = selectedCategoryFilter === 'ALL' || t.category === selectedCategoryFilter;
@@ -366,7 +404,6 @@ export default function App() {
     });
   }, [currentMonthTransactions, selectedCategoryFilter, searchQuery]);
 
-  // 切換月份
   const handlePrevMonth = () => {
     if (currentMonth === 1) {
       setCurrentYear(prev => prev - 1);
@@ -385,13 +422,11 @@ export default function App() {
     }
   };
 
-  // 取得該類別的輔助顏色
   const getCategoryColor = (catName) => {
     const found = categories.find(c => c.name === catName);
     return found ? found.color : '#8b5cf6';
   };
 
-  // 當前選取類別的熱門標題列表
   const currentCategoryTitles = useMemo(() => {
     const found = categories.find(c => c.name === newTrans.category);
     return found ? (found.defaultTitles || []) : [];
@@ -435,21 +470,14 @@ export default function App() {
             </div>
           </div>
 
-          {/* 月份切換器 */}
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 shadow-inner">
-            <button 
-              onClick={handlePrevMonth}
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
-            >
+            <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition">
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div className="px-4 font-semibold text-sm sm:text-base tracking-wider min-w-[120px] text-center">
               {currentYear}年{String(currentMonth).padStart(2, '0')}月
             </div>
-            <button 
-              onClick={handleNextMonth}
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
-            >
+            <button onClick={handleNextMonth} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
@@ -463,7 +491,6 @@ export default function App() {
           </button>
         </header>
 
-        {/* 狀態提示 */}
         {statusMsg.text && (
           <div className={`p-3 rounded-xl border text-sm flex items-center gap-2 ${
             statusMsg.type === 'error' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
@@ -475,7 +502,6 @@ export default function App() {
           </div>
         )}
 
-        {/* --- 功能按鈕區 --- */}
         <div className="flex flex-wrap items-center gap-3">
           <button 
             onClick={() => setShowAddModal(true)}
@@ -494,7 +520,6 @@ export default function App() {
           </button>
         </div>
 
-        {/* --- 資訊統計卡片 --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 relative overflow-hidden backdrop-blur-sm">
             <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
@@ -524,7 +549,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* --- 類別比例 (Category Breakdown) --- */}
         <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
           <h2 className="text-base font-semibold text-white mb-4 flex items-center justify-between">
             <span>開支類別比例 (Category Breakdown)</span>
@@ -557,9 +581,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* --- 支出明細列表 --- */}
+        {/* --- 支出明細列表 (附編輯與刪除按鈕) --- */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
-          {/* 搜尋與過濾 Bar */}
           <div className="p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               支出明細列表
@@ -592,7 +615,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* 列表內容 */}
           <div className="divide-y divide-slate-800/60">
             {filteredTransactions.length === 0 ? (
               <div className="p-12 text-center text-slate-500">
@@ -634,9 +656,29 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="text-right shrink-0">
-                      <div className="text-sm font-bold text-slate-100">
-                        - HK$ {Number(item.amount).toFixed(2)}
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-slate-100">
+                          - HK$ {Number(item.amount).toFixed(2)}
+                        </div>
+                      </div>
+
+                      {/* 編輯與刪除按鈕 */}
+                      <div className="flex items-center space-x-1 border-l border-slate-800 pl-3">
+                        <button 
+                          onClick={() => setEditingTransaction({ ...item })}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition"
+                          title="編輯"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteTransaction(item.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+                          title="刪除"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -654,10 +696,7 @@ export default function App() {
       {showAddModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button 
-              onClick={() => setShowAddModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-            >
+            <button onClick={() => setShowAddModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
               <X className="w-5 h-5" />
             </button>
 
@@ -667,7 +706,6 @@ export default function App() {
             </h3>
 
             <form onSubmit={handleAddTransaction} className="space-y-4">
-              {/* 日期 */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">日期 (date)</label>
                 <input 
@@ -679,7 +717,6 @@ export default function App() {
                 />
               </div>
 
-              {/* 金額 */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">金額 (amount)</label>
                 <div className="relative">
@@ -696,7 +733,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 類別 */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">類別 (category)</label>
                 <select 
@@ -710,7 +746,6 @@ export default function App() {
                 </select>
               </div>
 
-              {/* 項目名稱 / 熱門標題選擇 */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">項目標題 (title)</label>
                 <input 
@@ -722,7 +757,6 @@ export default function App() {
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
                 />
 
-                {/* 熱門預設標題按鈕 */}
                 {currentCategoryTitles.length > 0 && (
                   <div className="mt-2">
                     <span className="text-[11px] text-slate-500 block mb-1">快速選取熱門標題：</span>
@@ -742,7 +776,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* 付款人 payer */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">付款人 (payer)</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -763,10 +796,8 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 付款方式 paymentMethod */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">付款方式 (paymentMethod)</label>
-                
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   {PAYMENT_METHODS.map(pm => (
                     <button
@@ -783,26 +814,21 @@ export default function App() {
                     </button>
                   ))}
                 </div>
-
-                {/* 自訂付款方式 */}
-                <div className="mt-1">
-                  <input 
-                    type="text"
-                    placeholder="自訂其他付款方式..."
-                    value={newTrans.customPaymentMethod}
-                    onChange={(e) => setNewTrans({ 
-                      ...newTrans, 
-                      customPaymentMethod: e.target.value,
-                      isCustomPayment: true 
-                    })}
-                    className={`w-full bg-slate-950 border rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none ${
-                      newTrans.isCustomPayment ? 'border-emerald-500' : 'border-slate-800'
-                    }`}
-                  />
-                </div>
+                <input 
+                  type="text"
+                  placeholder="自訂其他付款方式..."
+                  value={newTrans.customPaymentMethod}
+                  onChange={(e) => setNewTrans({ 
+                    ...newTrans, 
+                    customPaymentMethod: e.target.value,
+                    isCustomPayment: true 
+                  })}
+                  className={`w-full bg-slate-950 border rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none ${
+                    newTrans.isCustomPayment ? 'border-emerald-500' : 'border-slate-800'
+                  }`}
+                />
               </div>
 
-              {/* 備註 */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">備註 (note)</label>
                 <input 
@@ -829,15 +855,142 @@ export default function App() {
       )}
 
       {/* ========================================================================= */}
+      {/* MODAL 1.5: 編輯記帳 (Edit Transaction Modal) */}
+      {/* ========================================================================= */}
+      {editingTransaction && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setEditingTransaction(null)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <Edit3 className="w-5 h-5 text-indigo-400" />
+              編輯支出紀錄
+            </h3>
+
+            <form onSubmit={handleUpdateTransaction} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">日期 (date)</label>
+                <input 
+                  type="date"
+                  required
+                  value={editingTransaction.date || ''}
+                  onChange={(e) => setEditingTransaction({ ...editingTransaction, date: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">金額 (amount)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-slate-500 text-sm font-semibold">HK$</span>
+                  <input 
+                    type="number"
+                    step="0.01"
+                    required
+                    value={editingTransaction.amount || ''}
+                    onChange={(e) => setEditingTransaction({ ...editingTransaction, amount: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-3 py-2 text-slate-100 text-base font-bold focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">類別 (category)</label>
+                <select 
+                  value={editingTransaction.category || categories[0].name}
+                  onChange={(e) => setEditingTransaction({ ...editingTransaction, category: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                >
+                  {categories.map(c => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">項目標題 (title)</label>
+                <input 
+                  type="text"
+                  required
+                  value={editingTransaction.title || ''}
+                  onChange={(e) => setEditingTransaction({ ...editingTransaction, title: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">付款人 (payer)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PAYERS.map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setEditingTransaction({ ...editingTransaction, payer: p })}
+                      className={`py-2 px-3 rounded-xl border text-sm font-semibold transition ${
+                        editingTransaction.payer === p
+                          ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">付款方式 (paymentMethod)</label>
+                <select 
+                  value={editingTransaction.paymentMethod || PAYMENT_METHODS[0]}
+                  onChange={(e) => setEditingTransaction({ ...editingTransaction, paymentMethod: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                >
+                  {PAYMENT_METHODS.map(pm => (
+                    <option key={pm} value={pm}>{pm}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">備註 (note)</label>
+                <input 
+                  type="text"
+                  value={editingTransaction.note || ''}
+                  onChange={(e) => setEditingTransaction({ ...editingTransaction, note: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button 
+                  type="button"
+                  onClick={() => setEditingTransaction(null)}
+                  className="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 rounded-xl transition"
+                >
+                  取消
+                </button>
+                <button 
+                  type="submit"
+                  disabled={loading}
+                  className="w-1/2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl shadow-lg transition"
+                >
+                  儲存修改
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* MODAL 2: 恆常開支管理 */}
       {/* ========================================================================= */}
       {showRecurringModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button 
-              onClick={() => setShowRecurringModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-            >
+            <button onClick={() => setShowRecurringModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
               <X className="w-5 h-5" />
             </button>
 
@@ -849,7 +1002,6 @@ export default function App() {
               設定每月扣款日 (`dayOfMonth`)，GAS 每日排程自動產生交易至記帳本。
             </p>
 
-            {/* 新增恆常支出表單 */}
             <form onSubmit={handleAddRecurring} className="bg-slate-950 border border-slate-800/80 p-4 rounded-xl space-y-3 mb-6">
               <div className="text-xs font-semibold text-indigo-300">新增恆常開支設定：</div>
               <div className="grid grid-cols-2 gap-3">
@@ -925,7 +1077,6 @@ export default function App() {
               </div>
             </form>
 
-            {/* 現有恆常開支清單 */}
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {recurringExpenses.map(item => (
                 <div key={item.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center justify-between text-xs">
@@ -962,10 +1113,7 @@ export default function App() {
       {showCategoryModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button 
-              onClick={() => setShowCategoryModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-            >
+            <button onClick={() => setShowCategoryModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
               <X className="w-5 h-5" />
             </button>
 
@@ -974,7 +1122,6 @@ export default function App() {
               類別與熱門標題管理
             </h3>
 
-            {/* 新增類別 */}
             <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl mb-4 space-y-2">
               <div className="text-xs font-semibold text-slate-300">新增分類與快速標題：</div>
               <div className="flex items-center gap-2">
@@ -1007,7 +1154,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* 現有類別列表 */}
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {categories.map(cat => (
                 <div key={cat.id} className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center justify-between">
@@ -1020,10 +1166,7 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => handleDeleteCategory(cat.id)}
-                    className="text-slate-500 hover:text-rose-400 p-1"
-                  >
+                  <button onClick={() => handleDeleteCategory(cat.id)} className="text-slate-500 hover:text-rose-400 p-1">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -1039,10 +1182,7 @@ export default function App() {
       {showUrlModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <button 
-              onClick={() => setShowUrlModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-            >
+            <button onClick={() => setShowUrlModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
               <X className="w-5 h-5" />
             </button>
 
