@@ -1,602 +1,1217 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Plus, RefreshCw, Settings, Database, Calendar, ChevronLeft, ChevronRight, 
+  Trash2, Edit3, X, Check, CreditCard, DollarSign, User, Tag, FileText, 
+  ChevronDown, PieChart, Lock, ArrowUpRight, CheckCircle2, Clock
+} from 'lucide-react';
 
-interface Transaction {
-  id: number | string;
-  date: string;
-  amount: number;
-  category: string;
-  title: string;
-  payer: string;
-  paymentMethod: string;
-  note: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  color: string;
-}
-
-const INITIAL_CATEGORIES: Category[] = [
-  { id: 'food', name: '餐飲飲食', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-  { id: 'transport', name: '交通出行', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-  { id: 'housing', name: '日常居住', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  { id: 'entertainment', name: '休閒娛樂', color: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
-  { id: 'shopping', name: '購物消費', color: 'bg-pink-500/10 text-pink-400 border-pink-500/20' },
-  { id: 'medical', name: '醫療保健', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
-  { id: 'other', name: '其他雜項', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+const INITIAL_CATEGORIES = [
+  { id: 'cat_1', name: '住屋交通', color: '#6366f1', defaultTitles: ['供樓', '水費', '電費', '煤氣費', '管理費', '停車場', '車費', '汽油'] },
+  { id: 'cat_2', name: '保險訂閱', color: '#3b82f6', defaultTitles: ['人壽保險', '醫療保險', 'Netflix', 'Spotify', 'iCloud', 'YouTube Premium'] },
+  { id: 'cat_3', name: '購物娛樂', color: '#ec4899', defaultTitles: ['超市買餸', '外賣飲食', '網購服飾', '電子產品', '電影日用品'] },
+  { id: 'cat_4', name: 'Riley', color: '#10b981', defaultTitles: ['奶粉', '尿片', '玩具', '補習費', '衣物', '醫療診所'] },
+  { id: 'cat_5', name: 'Bulu', color: '#14b8a6', defaultTitles: ['貓糧/狗糧', '罐頭零食', '貓砂', '獸醫診所', '寵物美容'] },
+  { id: 'cat_6', name: '工人', color: '#f59e0b', defaultTitles: ['月薪', '膳食費', '勞保', '機票', '日用品'] },
+  { id: 'cat_7', name: '其他', color: '#8b5cf6', defaultTitles: ['雜項支出', '轉帳提款', '稅款', '人情禮物'] },
 ];
 
-const INITIAL_TRANSACTIONS: Transaction[] = [
-  {
-    id: 1,
-    date: new Date().toISOString().split('T')[0],
-    amount: 120,
-    category: 'food',
-    title: '午餐套餐',
-    payer: '我',
-    paymentMethod: '信用卡',
-    note: '美味便當',
-  }
-];
+const PAYERS = ['YSK', 'FMH'];
+const PAYMENT_METHODS = ['信用卡', '現金', '轉賬', 'Alipay'];
 
-const PlusIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-  </svg>
-);
-
-const CloudIcon = () => (
-  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 00-9.78 2.096A4.001 4.001 0 003 15z" />
-  </svg>
-);
-
-const RefreshIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-  </svg>
-);
-
-const TrashIcon = () => (
-  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-);
-
-const EditIcon = () => (
-  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-  </svg>
-);
+const getLocalDateString = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 export default function App() {
-  const [categories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  const [gasUrl, setGasUrl] = useState(() => localStorage.getItem('gas_app_url') || '');
+  const [showUrlModal, setShowUrlModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
 
-  const currentMonthStr = new Date().toISOString().slice(0, 7);
-  const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
+  const [transactions, setTransactions] = useState([]);
+  const [recurringExpenses, setRecurringExpenses] = useState([]);
+  const [categories, setCategories] = useState(() => {
+    const saved = localStorage.getItem('app_categories');
+    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+  });
+
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showRecurringModal, setShowRecurringModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+
+  // 編輯交易 Modal 狀態
+  const [editingTransaction, setEditingTransaction] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('ALL');
 
-  const [gasApiUrl, setGasApiUrl] = useState(() => localStorage.getItem('gas_api_url') || '');
-  const [inputApiUrl, setInputApiUrl] = useState(gasApiUrl);
-  const [isApiModalOpen, setIsApiModalOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [syncMessage, setSyncMessage] = useState('');
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTxId, setEditingTxId] = useState<number | string | null>(null);
-
-  const todayStr = new Date().toISOString().split('T')[0];
-  const [formData, setFormData] = useState({
-    date: todayStr,
+  const [newTrans, setNewTrans] = useState({
+    date: getLocalDateString(),
     amount: '',
-    category: 'food',
+    category: INITIAL_CATEGORIES[0].name,
     title: '',
-    payer: '我',
-    paymentMethod: '信用卡',
+    payer: PAYERS[0],
+    paymentMethod: PAYMENT_METHODS[0],
+    customPaymentMethod: '',
+    isCustomPayment: false,
     note: ''
   });
 
-  const handleFetchFromCloud = async () => {
-    if (!gasApiUrl) {
-      setIsApiModalOpen(true);
+  const [newRec, setNewRec] = useState({
+    amount: '',
+    category: INITIAL_CATEGORIES[0].name,
+    title: '',
+    payer: PAYERS[0],
+    paymentMethod: PAYMENT_METHODS[0],
+    note: '',
+    frequency: 'Monthly',
+    dayOfMonth: 1
+  });
+
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatColor, setNewCatColor] = useState('#3b82f6');
+  const [newCatTitles, setNewCatTitles] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('app_categories', JSON.stringify(categories));
+  }, [categories]);
+
+  const loadDataFromGAS = async (url = gasUrl) => {
+    if (!url) {
+      setShowUrlModal(true);
+      return;
+    }
+    setLoading(true);
+    setStatusMsg({ type: 'info', text: '正在連線至 Google Sheets 讀取數據...' });
+    try {
+      const res = await fetch(url);
+      const json = await res.json();
+      if (json.status === 'success') {
+        setTransactions(json.transactions || json.data || []);
+        if (json.recurring !== undefined) {
+          setRecurringExpenses(json.recurring);
+        }
+        setStatusMsg({ type: 'success', text: '數據同步成功！' });
+        setTimeout(() => setStatusMsg({ type: '', text: '' }), 3000);
+      } else {
+        throw new Error(json.message || '無法取得數據');
+      }
+    } catch (err) {
+      console.error(err);
+      setStatusMsg({ type: 'error', text: '同步失敗: ' + err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (gasUrl) {
+      loadDataFromGAS(gasUrl);
+    }
+  }, []);
+
+  const handleSaveUrl = () => {
+    localStorage.setItem('gas_app_url', gasUrl);
+    setShowUrlModal(false);
+    loadDataFromGAS(gasUrl);
+  };
+
+  const handleCategoryChangeForNewTrans = (catName) => {
+    setNewTrans(prev => ({ ...prev, category: catName }));
+  };
+
+  // 新增交易
+  const handleAddTransaction = async (e) => {
+    e.preventDefault();
+    if (!newTrans.amount || !newTrans.title) {
+      alert('請填寫金額與項目標題！');
       return;
     }
 
-    setIsSyncing(true);
-    setSyncStatus('idle');
-    setSyncMessage('正在從 Google Sheets 載入資料...');
+    const payload = {
+      action: 'addTransaction',
+      date: newTrans.date,
+      amount: parseFloat(newTrans.amount),
+      category: newTrans.category,
+      title: newTrans.title,
+      payer: newTrans.payer,
+      paymentMethod: newTrans.isCustomPayment ? newTrans.customPaymentMethod : newTrans.paymentMethod,
+      note: newTrans.note
+    };
 
-    try {
-      const response = await fetch(`${gasApiUrl}?action=getTransactions`);
-      const result = await response.json();
+    const tempId = 'temp_' + Date.now();
+    setTransactions(prev => [{ ...payload, id: tempId }, ...prev]);
+    setShowAddModal(false);
 
-      if (result.status === 'success' && Array.isArray(result.data)) {
-        const cloudData: Transaction[] = result.data.map((item: any) => ({
-          id: item.id || Date.now(),
-          date: item.date ? String(item.date).split('T')[0] : todayStr,
-          amount: Number(item.amount) || 0,
-          category: item.category || 'other',
-          title: item.title || '',
-          payer: item.payer || '我',
-          paymentMethod: item.paymentMethod || '信用卡',
-          note: item.note || ''
-        }));
-
-        setTransactions(cloudData);
-        setSyncStatus('success');
-        setSyncMessage(`同步成功！已載入 ${cloudData.length} 筆雲端紀錄`);
-      } else {
-        throw new Error(result.message || '無法讀取數據');
-      }
-    } catch (err: any) {
-      const errorMessage = err.message || '請確認 API URL 是否正確並已公開部署';
-      setSyncStatus('error');
-      setSyncMessage(`同步失敗: ${errorMessage}`);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleSyncToCloud = async (newRecord: Transaction) => {
-    if (!gasApiUrl) return;
-
-    setIsSyncing(true);
-    setSyncMessage('正在同步紀錄至 Google Sheets...');
-
-    try {
-      const response = await fetch(gasApiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'addTransaction',
-          payload: newRecord
-        })
-      });
-      const result = await response.json();
-
-      if (result.status === 'success') {
-        setSyncStatus('success');
-        setSyncMessage('已成功即時同步寫入 Google Sheets！');
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (err: any) {
-      const errorMessage = err.message || '連線失敗';
-      setSyncStatus('error');
-      setSyncMessage(`雲端寫入失敗: ${errorMessage}`);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleSaveApiUrl = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanUrl = inputApiUrl.trim();
-    setGasApiUrl(cleanUrl);
-    localStorage.setItem('gas_api_url', cleanUrl);
-    setSyncStatus('success');
-    setSyncMessage('API Web App URL 已成功儲存！');
-    setIsApiModalOpen(false);
-  };
-
-  const handleSubmitTransaction = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.amount || Number(formData.amount) <= 0) return;
-
-    const catObj = categories.find(c => c.id === formData.category);
-    const defaultTitle = catObj ? catObj.name : '記帳';
-
-    if (editingTxId) {
-      setTransactions(transactions.map(t => t.id === editingTxId ? {
-        ...t,
-        amount: Number(formData.amount),
-        category: formData.category,
-        date: formData.date,
-        title: formData.title || defaultTitle,
-        payer: formData.payer,
-        paymentMethod: formData.paymentMethod,
-        note: formData.note
-      } : t));
-    } else {
-      const newTx: Transaction = {
-        id: Date.now(),
-        amount: Number(formData.amount),
-        category: formData.category,
-        date: formData.date,
-        title: formData.title || defaultTitle,
-        payer: formData.payer,
-        paymentMethod: formData.paymentMethod,
-        note: formData.note
-      };
-      setTransactions([newTx, ...transactions]);
-
-      if (gasApiUrl) {
-        handleSyncToCloud(newTx);
-      }
-    }
-
-    setIsModalOpen(false);
-    setEditingTxId(null);
-    setFormData({
-      date: todayStr,
+    setNewTrans({
+      date: getLocalDateString(),
       amount: '',
-      category: 'food',
+      category: categories[0]?.name || '其他',
       title: '',
-      payer: '我',
-      paymentMethod: '信用卡',
+      payer: PAYERS[0],
+      paymentMethod: PAYMENT_METHODS[0],
+      customPaymentMethod: '',
+      isCustomPayment: false,
       note: ''
     });
-  };
 
-  const handleDeleteTransaction = (id: number | string) => {
-    if (window.confirm('確定要刪除這筆紀錄嗎？')) {
-      setTransactions(transactions.filter(t => t.id !== id));
+    if (gasUrl) {
+      setLoading(true);
+      try {
+        const res = await fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          redirect: 'follow',
+          body: JSON.stringify(payload)
+        });
+        const resJson = await res.json();
+        if (resJson.status === 'success') {
+          loadDataFromGAS();
+        } else {
+          alert('寫入失敗：' + resJson.message);
+        }
+      } catch (err) {
+        alert('發生錯誤：' + err.message);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleEditTransaction = (tx: Transaction) => {
-    setEditingTxId(tx.id);
-    setFormData({
-      date: tx.date,
-      amount: String(tx.amount),
-      category: tx.category,
-      title: tx.title,
-      payer: tx.payer,
-      paymentMethod: tx.paymentMethod,
-      note: tx.note
-    });
-    setIsModalOpen(true);
+  // 刪除一般交易
+  const handleDeleteTransaction = async (id) => {
+    if (!window.confirm('確定要刪除這筆支出紀錄嗎？')) return;
+
+    setTransactions(prev => prev.filter(t => t.id !== id));
+
+    if (gasUrl) {
+      setLoading(true);
+      try {
+        const res = await fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          redirect: 'follow',
+          body: JSON.stringify({ action: 'deleteTransaction', id: id })
+        });
+        const resJson = await res.json();
+        if (resJson.status !== 'success') {
+          alert('刪除失敗：' + resJson.message);
+          loadDataFromGAS();
+        }
+      } catch (err) {
+        alert('刪除請求失敗：' + err.message);
+        loadDataFromGAS();
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => {
-      const matchMonth = t.date.startsWith(selectedMonth);
-      const matchCategory = selectedCategoryFilter === 'all' || t.category === selectedCategoryFilter;
-      const matchQuery = !searchQuery ||
-        t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.note.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchMonth && matchCategory && matchQuery;
-    });
-  }, [transactions, selectedMonth, selectedCategoryFilter, searchQuery]);
+  // 提交修改一般交易
+  const handleUpdateTransaction = async (e) => {
+    e.preventDefault();
+    if (!editingTransaction) return;
 
-  const totalMonthlyAmount = useMemo(() => {
-    return filteredTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-  }, [filteredTransactions]);
+    const payload = {
+      action: 'editTransaction',
+      ...editingTransaction,
+      amount: parseFloat(editingTransaction.amount)
+    };
+
+    // 前端即時更新
+    setTransactions(prev => prev.map(t => t.id === payload.id ? payload : t));
+    setEditingTransaction(null);
+
+    if (gasUrl) {
+      setLoading(true);
+      try {
+        const res = await fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          redirect: 'follow',
+          body: JSON.stringify(payload)
+        });
+        const resJson = await res.json();
+        if (resJson.status === 'success') {
+          loadDataFromGAS();
+        } else {
+          alert('更新失敗：' + resJson.message);
+        }
+      } catch (err) {
+        alert('更新請求失敗：' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // 新增恆常開支
+  const handleAddRecurring = async (e) => {
+    e.preventDefault();
+    if (!newRec.amount || !newRec.title) return;
+    
+    const payload = {
+      action: 'addRecurring',
+      ...newRec,
+      amount: parseFloat(newRec.amount),
+      dayOfMonth: parseInt(newRec.dayOfMonth) || 1
+    };
+
+    const tempId = 'rec_' + Date.now();
+    setRecurringExpenses(prev => [...prev, { ...payload, id: tempId }]);
+    setShowRecurringModal(false);
+
+    setNewRec({
+      amount: '',
+      category: categories[0]?.name || '其他',
+      title: '',
+      payer: PAYERS[0],
+      paymentMethod: PAYMENT_METHODS[0],
+      note: '',
+      frequency: 'Monthly',
+      dayOfMonth: 1
+    });
+
+    if (gasUrl) {
+      setLoading(true);
+      try {
+        const res = await fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          redirect: 'follow',
+          body: JSON.stringify(payload)
+        });
+        const resJson = await res.json();
+        if (resJson.status === 'success') {
+          loadDataFromGAS();
+        } else {
+          alert('恆常開支寫入失敗：' + resJson.message);
+        }
+      } catch (err) {
+        alert('發生錯誤：' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // 刪除恆常開支
+  const handleDeleteRecurring = async (id) => {
+    if (!window.confirm('確定要刪除這筆恆常開支嗎？')) return;
+    
+    setRecurringExpenses(prev => prev.filter(r => r.id !== id));
+    
+    if (gasUrl) {
+      setLoading(true);
+      try {
+        const res = await fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          redirect: 'follow',
+          body: JSON.stringify({ action: 'deleteRecurring', id: id })
+        });
+        const resJson = await res.json();
+        if (resJson.status !== 'success') {
+          alert('刪除失敗：' + resJson.message);
+          loadDataFromGAS();
+        }
+      } catch (err) {
+        alert('刪除請求失敗：' + err.message);
+        loadDataFromGAS();
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleAddCategory = () => {
+    if (!newCatName.trim()) return;
+    const defaultTitlesArr = newCatTitles
+      .split(/[,，\n]/)
+      .map(t => t.trim())
+      .filter(Boolean);
+
+    const newCat = {
+      id: 'cat_' + Date.now(),
+      name: newCatName.trim(),
+      color: newCatColor,
+      defaultTitles: defaultTitlesArr.length > 0 ? defaultTitlesArr : ['一般支出']
+    };
+    setCategories(prev => [...prev, newCat]);
+    setNewCatName('');
+    setNewCatTitles('');
+  };
+
+  const handleDeleteCategory = (catId) => {
+    if (categories.length <= 1) {
+      alert('最少需保留一個類別！');
+      return;
+    }
+    setCategories(prev => prev.filter(c => c.id !== catId));
+  };
+
+  const formattedMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
+  const currentMonthTransactions = useMemo(() => {
+    return transactions.filter(t => {
+      if (!t.date) return false;
+      return String(t.date).startsWith(formattedMonthStr);
+    });
+  }, [transactions, formattedMonthStr]);
+
+  const totalExpense = useMemo(() => {
+    return currentMonthTransactions.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
+  }, [currentMonthTransactions]);
+
+  const totalRecurringExpense = useMemo(() => {
+    return recurringExpenses.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
+  }, [recurringExpenses]);
+
+  const categoryBreakdown = useMemo(() => {
+    const map = {};
+    categories.forEach(c => { map[c.name] = 0; });
+    
+    currentMonthTransactions.forEach(t => {
+      const catName = t.category || '其他';
+      if (map[catName] !== undefined) {
+        map[catName] += (Number(t.amount) || 0);
+      } else {
+        map[catName] = (Number(t.amount) || 0);
+      }
+    });
+
+    return categories.map(c => ({
+      ...c,
+      total: map[c.name] || 0,
+      percentage: totalExpense > 0 ? (((map[c.name] || 0) / totalExpense) * 100).toFixed(1) : '0.0'
+    }));
+  }, [currentMonthTransactions, categories, totalExpense]);
+
+  const filteredTransactions = useMemo(() => {
+    return currentMonthTransactions.filter(t => {
+      const matchCategory = selectedCategoryFilter === 'ALL' || t.category === selectedCategoryFilter;
+      const q = searchQuery.toLowerCase();
+      const matchSearch = !q || 
+        (t.title && String(t.title).toLowerCase().includes(q)) ||
+        (t.payer && String(t.payer).toLowerCase().includes(q)) ||
+        (t.paymentMethod && String(t.paymentMethod).toLowerCase().includes(q)) ||
+        (t.note && String(t.note).toLowerCase().includes(q));
+      return matchCategory && matchSearch;
+    });
+  }, [currentMonthTransactions, selectedCategoryFilter, searchQuery]);
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 1) {
+      setCurrentYear(prev => prev - 1);
+      setCurrentMonth(12);
+    } else {
+      setCurrentMonth(prev => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 12) {
+      setCurrentYear(prev => prev + 1);
+      setCurrentMonth(1);
+    } else {
+      setCurrentMonth(prev => prev + 1);
+    }
+  };
+
+  const getCategoryColor = (catName) => {
+    const found = categories.find(c => c.name === catName);
+    return found ? found.color : '#8b5cf6';
+  };
+
+  const currentCategoryTitles = useMemo(() => {
+    const found = categories.find(c => c.name === newTrans.category);
+    return found ? (found.defaultTitles || []) : [];
+  }, [newTrans.category, categories]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 font-sans">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="min-h-screen bg-[#0d1117] text-slate-100 font-sans p-3 sm:p-6 md:p-8">
+      <div className="max-w-5xl mx-auto space-y-6">
 
-        <header className="relative bg-slate-900/80 p-5 rounded-2xl border border-slate-800 backdrop-blur-md shadow-xl flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsApiModalOpen(true)}
-              className={`p-2 border rounded-xl transition-all cursor-pointer ${
-                gasApiUrl
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                  : 'bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse'
+        {/* --- 頂部 Header --- */}
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div className="flex items-center space-x-3">
+            <button 
+              onClick={() => setShowUrlModal(true)}
+              className={`p-2.5 rounded-xl border transition-all ${
+                gasUrl 
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
+                  : 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20 animate-pulse'
               }`}
-              title={gasApiUrl ? "雲端已連線" : "未連線雲端 (點擊設定)"}
+              title="設定 GAS API URL"
             >
-              <CloudIcon />
+              <Database className="w-5 h-5" />
             </button>
-
-            <button
-              onClick={handleFetchFromCloud}
-              disabled={isSyncing}
-              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl transition-all cursor-pointer disabled:opacity-50"
-              title="從雲端重新整理"
+            
+            <button 
+              onClick={() => loadDataFromGAS()}
+              disabled={loading}
+              className="p-2.5 rounded-xl bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white hover:bg-slate-700 transition"
+              title="重新整理數據"
             >
-              <RefreshIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin text-emerald-400' : ''}`} />
+              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
             </button>
 
             <div>
-              <h1 className="text-xl font-black text-white bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
                 私人記帳本
+                <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-normal">
+                  Cloud DB Sync
+                </span>
               </h1>
-              <p className="text-xs text-slate-400">極簡個人財務統計</p>
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              setEditingTxId(null);
-              setFormData({
-                date: todayStr,
-                amount: '',
-                category: 'food',
-                title: '',
-                payer: '我',
-                paymentMethod: '信用卡',
-                note: ''
-              });
-              setIsModalOpen(true);
-            }}
-            className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 shadow-inner">
+            <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="px-4 font-semibold text-sm sm:text-base tracking-wider min-w-[120px] text-center">
+              {currentYear}年{String(currentMonth).padStart(2, '0')}月
+            </div>
+            <button onClick={handleNextMonth} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition">
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+
+          <button 
+            onClick={() => setShowCategoryModal(true)}
+            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="管理類別與顏色"
           >
-            <PlusIcon />
-            <span>新增記帳</span>
+            <Settings className="w-5 h-5" />
           </button>
         </header>
 
-        {syncMessage && (
-          <div className={`p-3 rounded-xl border text-xs font-medium flex items-center justify-between ${
-            syncStatus === 'error'
-              ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
-              : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+        {statusMsg.text && (
+          <div className={`p-3 rounded-xl border text-sm flex items-center gap-2 ${
+            statusMsg.type === 'error' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
+            statusMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+            'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
           }`}>
-            <div className="flex items-center gap-2">
-              {isSyncing && <RefreshIcon className="w-4 h-4 animate-spin text-emerald-400" />}
-              <span>{syncMessage}</span>
-            </div>
-            <button onClick={() => setSyncMessage('')} className="text-slate-400 hover:text-white font-bold">✕</button>
+            <Clock className="w-4 h-4 animate-spin" />
+            <span>{statusMsg.text}</span>
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
-            <div className="text-xs text-slate-400 font-medium">選擇月份</div>
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="mt-2 bg-slate-950 border border-slate-800 text-emerald-400 font-bold text-sm rounded-xl p-2 focus:outline-none"
-            />
-          </div>
-
-          <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
-            <div className="text-xs text-slate-400 font-medium">本月總開支</div>
-            <div className="text-2xl font-black text-rose-400 mt-1">
-              ${totalMonthlyAmount.toLocaleString()}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="text"
-            placeholder="搜尋名稱或備註..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-slate-900 border border-slate-800 text-xs text-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500/50"
-          />
-          <select
-            value={selectedCategoryFilter}
-            onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-            className="bg-slate-900 border border-slate-800 text-xs text-slate-300 rounded-xl px-3 py-2 focus:outline-none"
+        <div className="flex flex-wrap items-center gap-3">
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-900/20 transition hover:scale-[1.02] active:scale-95"
           >
-            <option value="all">所有類別</option>
-            {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+            <Plus className="w-5 h-5" />
+            <span>新增記帳</span>
+          </button>
+
+          <button 
+            onClick={() => setShowRecurringModal(true)}
+            className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-indigo-900/20 transition hover:scale-[1.02] active:scale-95"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>恆常開支</span>
+          </button>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
-          <h2 className="text-sm font-bold text-slate-300 mb-2">開支明細</h2>
-
-          {filteredTransactions.length === 0 ? (
-            <div className="text-center py-8 text-xs text-slate-500">
-              尚無相關記帳紀錄
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 relative overflow-hidden backdrop-blur-sm">
+            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+            <div className="text-xs font-medium text-slate-400 tracking-wider uppercase mb-1">
+              本月總開支 (TOTAL)
             </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredTransactions.map((tx) => {
-                const cat = categories.find(c => c.id === tx.category) || categories[categories.length - 1];
+            <div className="text-3xl font-extrabold text-white tracking-tight">
+              HK$ {totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div className="mt-3 text-xs text-slate-500 flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+              共 {currentMonthTransactions.length} 筆明細紀錄
+            </div>
+          </div>
+
+          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 relative overflow-hidden backdrop-blur-sm">
+            <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500" />
+            <div className="text-xs font-medium text-slate-400 tracking-wider uppercase mb-1">
+              折合每月固定恆常開支
+            </div>
+            <div className="text-3xl font-extrabold text-indigo-300 tracking-tight">
+              HK$ {totalRecurringExpense.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </div>
+            <div className="mt-3 text-xs text-indigo-400/80 flex items-center gap-2">
+              <span>{recurringExpenses.length} 個預定訂閱/恆常項目</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
+          <h2 className="text-base font-semibold text-white mb-4 flex items-center justify-between">
+            <span>開支類別比例 (Category Breakdown)</span>
+            <span className="text-xs text-slate-500 font-normal">點擊下方分類可快速篩選列表</span>
+          </h2>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            {categoryBreakdown.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategoryFilter(selectedCategoryFilter === cat.name ? 'ALL' : cat.name)}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  selectedCategoryFilter === cat.name
+                    ? 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500'
+                    : 'border-slate-800/80 bg-slate-950/40 hover:border-slate-700'
+                }`}
+              >
+                <div className="flex items-center space-x-2 mb-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }}></span>
+                  <span className="text-xs font-medium text-slate-300 truncate">{cat.name}</span>
+                </div>
+                <div className="text-sm font-bold text-white truncate">
+                  HK$ {cat.total.toLocaleString()}
+                </div>
+                <div className="text-[10px] text-slate-500 mt-1">
+                  {cat.percentage}%
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* --- 支出明細列表 (附編輯與刪除按鈕) --- */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              支出明細列表
+              {selectedCategoryFilter !== 'ALL' && (
+                <span className="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  {selectedCategoryFilter}
+                  <X className="w-3 h-3 cursor-pointer hover:text-white" onClick={() => setSelectedCategoryFilter('ALL')} />
+                </span>
+              )}
+            </h3>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <input 
+                type="text"
+                placeholder="搜尋項目/付款人/備註..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full sm:w-64 bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:border-indigo-500"
+              />
+              <select
+                value={selectedCategoryFilter}
+                onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                className="bg-slate-950 border border-slate-800 text-slate-300 text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="ALL">所有類別</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="divide-y divide-slate-800/60">
+            {filteredTransactions.length === 0 ? (
+              <div className="p-12 text-center text-slate-500">
+                <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p>當月暫無相關記帳紀錄</p>
+              </div>
+            ) : (
+              filteredTransactions.map((item, idx) => {
+                const catColor = getCategoryColor(item.category);
                 return (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl hover:border-slate-700 transition-all"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-md border font-medium ${cat.color}`}>
-                          {cat.name}
-                        </span>
-                        <span className="text-sm font-bold text-white">{tx.title}</span>
-                      </div>
-                      <div className="text-[11px] text-slate-400 flex gap-2">
-                        <span>{tx.date}</span>
-                        <span>•</span>
-                        <span>{tx.paymentMethod}</span>
-                        {tx.note && <><span>•</span><span>{tx.note}</span></>}
+                  <div key={item.id || idx} className="p-4 hover:bg-slate-800/40 transition flex items-center justify-between gap-3">
+                    <div className="flex items-center space-x-3.5">
+                      <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: catColor }} />
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-semibold text-white">{item.title}</span>
+                          {item.payer && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">
+                              {item.payer}
+                            </span>
+                          )}
+                          {item.paymentMethod && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                              {item.paymentMethod}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+                          <span>{item.date}</span>
+                          <span>•</span>
+                          <span>{item.category || '其他'}</span>
+                          {item.note && (
+                            <>
+                              <span>•</span>
+                              <span className="text-slate-400 italic">{item.note}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="text-sm font-black text-rose-400">
-                        ${Number(tx.amount).toLocaleString()}
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-slate-100">
+                          - HK$ {Number(item.amount).toFixed(2)}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleEditTransaction(tx)}
-                          className="p-1.5 text-slate-400 hover:text-emerald-400 transition-colors"
+
+                      {/* 編輯與刪除按鈕 */}
+                      <div className="flex items-center space-x-1 border-l border-slate-800 pl-3">
+                        <button 
+                          onClick={() => setEditingTransaction({ ...item })}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition"
+                          title="編輯"
                         >
-                          <EditIcon />
+                          <Edit3 className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteTransaction(tx.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
+                        <button 
+                          onClick={() => handleDeleteTransaction(item.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+                          title="刪除"
                         >
-                          <TrashIcon />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
                   </div>
                 );
-              })}
-            </div>
-          )}
+              })
+            )}
+          </div>
         </div>
 
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 className="text-sm font-bold text-white">
-                  {editingTxId ? '編輯記帳' : '新增記帳'}
-                </h3>
-                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
-              </div>
-
-              <form onSubmit={handleSubmitTransaction} className="space-y-3 text-xs">
-                <div>
-                  <label className="block text-slate-400 mb-1">日期</label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl p-2.5 focus:outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-slate-400 mb-1">金額 ($)</label>
-                    <input
-                      type="number"
-                      required
-                      placeholder="0"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl p-2.5 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">類別</label>
-                    <select
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl p-2.5 focus:outline-none"
-                    >
-                      {categories.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 mb-1">項目名稱</label>
-                  <input
-                    type="text"
-                    placeholder="如：午餐、搭計程車"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl p-2.5 focus:outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-slate-400 mb-1">付款人</label>
-                    <select
-                      value={formData.payer}
-                      onChange={(e) => setFormData({ ...formData, payer: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl p-2.5 focus:outline-none"
-                    >
-                      <option value="我">我</option>
-                      <option value="伴侶">伴侶</option>
-                      <option value="共同">共同</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">支付方式</label>
-                    <select
-                      value={formData.paymentMethod}
-                      onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl p-2.5 focus:outline-none"
-                    >
-                      <option value="信用卡">信用卡</option>
-                      <option value="現金">現金</option>
-                      <option value="行動支付">行動支付</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 mb-1">備註 (選填)</label>
-                  <input
-                    type="text"
-                    placeholder="備註資訊..."
-                    value={formData.note}
-                    onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl p-2.5 focus:outline-none"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 text-slate-400 hover:text-white cursor-pointer"
-                  >
-                    取消
-                  </button>
-                  <button
-                    type="submit"
-                    className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-4 py-2 rounded-xl transition-all cursor-pointer"
-                  >
-                    儲存
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {isApiModalOpen && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <CloudIcon />
-                  <span>Google Sheets 雲端 API 設定</span>
-                </h3>
-                <button onClick={() => setIsApiModalOpen(false)} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
-              </div>
-
-              <form onSubmit={handleSaveApiUrl} className="space-y-3 text-xs">
-                <div>
-                  <label className="block text-slate-400 mb-1">Web App URL (網頁應用程式網址)</label>
-                  <input
-                    type="url"
-                    placeholder="https://script.google.com/macros/s/.../exec"
-                    required
-                    value={inputApiUrl}
-                    onChange={(e) => setInputApiUrl(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none font-mono"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsApiModalOpen(false)}
-                    className="px-4 py-2 text-slate-400 hover:text-white cursor-pointer"
-                  >
-                    取消
-                  </button>
-                  <button
-                    type="submit"
-                    className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-4 py-2 rounded-xl transition-all cursor-pointer"
-                  >
-                    儲存 API 網址
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODAL 1: 新增記帳 */}
+      {/* ========================================================================= */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setShowAddModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <Plus className="w-5 h-5 text-emerald-400" />
+              新增支出記帳
+            </h3>
+
+            <form onSubmit={handleAddTransaction} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">日期 (date)</label>
+                <input 
+                  type="date"
+                  required
+                  value={newTrans.date}
+                  onChange={(e) => setNewTrans({ ...newTrans, date: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">金額 (amount)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-slate-500 text-sm font-semibold">HK$</span>
+                  <input 
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="0.00"
+                    value={newTrans.amount}
+                    onChange={(e) => setNewTrans({ ...newTrans, amount: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-3 py-2 text-slate-100 text-base font-bold focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">類別 (category)</label>
+                <select 
+                  value={newTrans.category}
+                  onChange={(e) => handleCategoryChangeForNewTrans(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                >
+                  {categories.map(c => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">項目標題 (title)</label>
+                <input 
+                  type="text"
+                  required
+                  placeholder="請輸入或點選下方預設標題"
+                  value={newTrans.title}
+                  onChange={(e) => setNewTrans({ ...newTrans, title: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                />
+
+                {currentCategoryTitles.length > 0 && (
+                  <div className="mt-2">
+                    <span className="text-[11px] text-slate-500 block mb-1">快速選取熱門標題：</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {currentCategoryTitles.map((t, idx) => (
+                        <button
+                          type="button"
+                          key={idx}
+                          onClick={() => setNewTrans(prev => ({ ...prev, title: t }))}
+                          className="text-xs px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700/80 transition"
+                        >
+                          + {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">付款人 (payer)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PAYERS.map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setNewTrans({ ...newTrans, payer: p })}
+                      className={`py-2 px-3 rounded-xl border text-sm font-semibold transition ${
+                        newTrans.payer === p
+                          ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/30'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">付款方式 (paymentMethod)</label>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  {PAYMENT_METHODS.map(pm => (
+                    <button
+                      key={pm}
+                      type="button"
+                      onClick={() => setNewTrans({ ...newTrans, paymentMethod: pm, isCustomPayment: false })}
+                      className={`py-1.5 px-3 rounded-xl border text-xs font-medium transition ${
+                        !newTrans.isCustomPayment && newTrans.paymentMethod === pm
+                          ? 'bg-emerald-600/30 border-emerald-500 text-emerald-300'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'
+                      }`}
+                    >
+                      {pm}
+                    </button>
+                  ))}
+                </div>
+                <input 
+                  type="text"
+                  placeholder="自訂其他付款方式..."
+                  value={newTrans.customPaymentMethod}
+                  onChange={(e) => setNewTrans({ 
+                    ...newTrans, 
+                    customPaymentMethod: e.target.value,
+                    isCustomPayment: true 
+                  })}
+                  className={`w-full bg-slate-950 border rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none ${
+                    newTrans.isCustomPayment ? 'border-emerald-500' : 'border-slate-800'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">備註 (note)</label>
+                <input 
+                  type="text"
+                  placeholder="可留空"
+                  value={newTrans.note}
+                  onChange={(e) => setNewTrans({ ...newTrans, note: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button 
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-emerald-900/30 transition"
+                >
+                  {loading ? '正在提交中...' : '確認新增記帳'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 1.5: 編輯記帳 (Edit Transaction Modal) */}
+      {/* ========================================================================= */}
+      {editingTransaction && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setEditingTransaction(null)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <Edit3 className="w-5 h-5 text-indigo-400" />
+              編輯支出紀錄
+            </h3>
+
+            <form onSubmit={handleUpdateTransaction} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">日期 (date)</label>
+                <input 
+                  type="date"
+                  required
+                  value={editingTransaction.date || ''}
+                  onChange={(e) => setEditingTransaction({ ...editingTransaction, date: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">金額 (amount)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-slate-500 text-sm font-semibold">HK$</span>
+                  <input 
+                    type="number"
+                    step="0.01"
+                    required
+                    value={editingTransaction.amount || ''}
+                    onChange={(e) => setEditingTransaction({ ...editingTransaction, amount: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-3 py-2 text-slate-100 text-base font-bold focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">類別 (category)</label>
+                <select 
+                  value={editingTransaction.category || categories[0].name}
+                  onChange={(e) => setEditingTransaction({ ...editingTransaction, category: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                >
+                  {categories.map(c => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">項目標題 (title)</label>
+                <input 
+                  type="text"
+                  required
+                  value={editingTransaction.title || ''}
+                  onChange={(e) => setEditingTransaction({ ...editingTransaction, title: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">付款人 (payer)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PAYERS.map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setEditingTransaction({ ...editingTransaction, payer: p })}
+                      className={`py-2 px-3 rounded-xl border text-sm font-semibold transition ${
+                        editingTransaction.payer === p
+                          ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">付款方式 (paymentMethod)</label>
+                <select 
+                  value={editingTransaction.paymentMethod || PAYMENT_METHODS[0]}
+                  onChange={(e) => setEditingTransaction({ ...editingTransaction, paymentMethod: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                >
+                  {PAYMENT_METHODS.map(pm => (
+                    <option key={pm} value={pm}>{pm}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">備註 (note)</label>
+                <input 
+                  type="text"
+                  value={editingTransaction.note || ''}
+                  onChange={(e) => setEditingTransaction({ ...editingTransaction, note: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button 
+                  type="button"
+                  onClick={() => setEditingTransaction(null)}
+                  className="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 rounded-xl transition"
+                >
+                  取消
+                </button>
+                <button 
+                  type="submit"
+                  disabled={loading}
+                  className="w-1/2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl shadow-lg transition"
+                >
+                  儲存修改
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 2: 恆常開支管理 */}
+      {/* ========================================================================= */}
+      {showRecurringModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setShowRecurringModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-indigo-400" />
+              恆常固定支出 (Recurring Expenses)
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">
+              設定每月扣款日 (`dayOfMonth`)，GAS 每日排程自動產生交易至記帳本。
+            </p>
+
+            <form onSubmit={handleAddRecurring} className="bg-slate-950 border border-slate-800/80 p-4 rounded-xl space-y-3 mb-6">
+              <div className="text-xs font-semibold text-indigo-300">新增恆常開支設定：</div>
+              <div className="grid grid-cols-2 gap-3">
+                <input 
+                  type="text" 
+                  placeholder="標題 (title)*"
+                  required
+                  value={newRec.title}
+                  onChange={(e) => setNewRec({ ...newRec, title: e.target.value })}
+                  className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                />
+                <input 
+                  type="number" 
+                  placeholder="金額 (amount)*"
+                  required
+                  value={newRec.amount}
+                  onChange={(e) => setNewRec({ ...newRec, amount: e.target.value })}
+                  className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <select 
+                  value={newRec.category}
+                  onChange={(e) => setNewRec({ ...newRec, category: e.target.value })}
+                  className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200"
+                >
+                  {categories.map(c => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+
+                <select 
+                  value={newRec.payer}
+                  onChange={(e) => setNewRec({ ...newRec, payer: e.target.value })}
+                  className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200"
+                >
+                  {PAYERS.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+
+                <select 
+                  value={newRec.paymentMethod}
+                  onChange={(e) => setNewRec({ ...newRec, paymentMethod: e.target.value })}
+                  className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200"
+                >
+                  {PAYMENT_METHODS.map(pm => (
+                    <option key={pm} value={pm}>{pm}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-slate-400 shrink-0">每月扣款日:</span>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    max="31" 
+                    value={newRec.dayOfMonth}
+                    onChange={(e) => setNewRec({ ...newRec, dayOfMonth: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-100 text-center"
+                  />
+                  <span className="text-xs text-slate-400">號</span>
+                </div>
+                <button 
+                  type="submit"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg py-1.5 transition"
+                >
+                  + 新增恆常項目
+                </button>
+              </div>
+            </form>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {recurringExpenses.map(item => (
+                <div key={item.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center justify-between text-xs">
+                  <div>
+                    <div className="font-bold text-white flex items-center gap-2">
+                      {item.title}
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300">
+                        每月 {item.dayOfMonth} 號扣款
+                      </span>
+                    </div>
+                    <div className="text-slate-400 mt-0.5">
+                      {item.category} • {item.payer} • {item.paymentMethod}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-indigo-300">HK$ {item.amount}</span>
+                    <button 
+                      onClick={() => handleDeleteRecurring(item.id)}
+                      className="text-slate-500 hover:text-rose-400"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 3: 類別與顏色設定 */}
+      {/* ========================================================================= */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setShowCategoryModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <Settings className="w-5 h-5 text-indigo-400" />
+              類別與熱門標題管理
+            </h3>
+
+            <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl mb-4 space-y-2">
+              <div className="text-xs font-semibold text-slate-300">新增分類與快速標題：</div>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="color" 
+                  value={newCatColor}
+                  onChange={(e) => setNewCatColor(e.target.value)}
+                  className="w-8 h-8 rounded border-0 bg-transparent cursor-pointer"
+                />
+                <input 
+                  type="text" 
+                  placeholder="類別名稱 (如: 寵物生活)"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none"
+                />
+              </div>
+              <input 
+                type="text" 
+                placeholder="預設熱門標題，用逗號分隔 (如: 糧食, 診所, 玩具)"
+                value={newCatTitles}
+                onChange={(e) => setNewCatTitles(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none"
+              />
+              <button 
+                onClick={handleAddCategory}
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-1.5 rounded-lg transition"
+              >
+                + 新增類別
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {categories.map(cat => (
+                <div key={cat.id} className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <span className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.color }}></span>
+                    <div>
+                      <div className="text-sm font-semibold text-white">{cat.name}</div>
+                      <div className="text-[10px] text-slate-500 truncate max-w-[200px]">
+                        預設: {cat.defaultTitles ? cat.defaultTitles.join(', ') : '無'}
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => handleDeleteCategory(cat.id)} className="text-slate-500 hover:text-rose-400 p-1">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 4: 設定 GAS API URL */}
+      {/* ========================================================================= */}
+      {showUrlModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onClick={() => setShowUrlModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+              <Database className="w-5 h-5 text-emerald-400" />
+              設定 Google Apps Script URL
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">
+              請貼上部署為「網頁應用程式 (Web App)」時獲得的 `https://script.google.com/macros/s/.../exec` 網址。
+            </p>
+
+            <input 
+              type="text"
+              placeholder="https://script.google.com/macros/s/.../exec"
+              value={gasUrl}
+              onChange={(e) => setGasUrl(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 text-xs font-mono focus:outline-none focus:border-indigo-500 mb-4"
+            />
+
+            <button 
+              onClick={handleSaveUrl}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 rounded-xl transition"
+            >
+              儲存並連線
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
