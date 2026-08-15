@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { DollarSign, Database, RefreshCw, ChevronLeft, ChevronRight, Settings, Calendar } from 'lucide-react';
+import { Database, RefreshCw, ChevronLeft, ChevronRight, Settings, Calendar } from 'lucide-react';
 import { useOnClickOutside } from '../hooks/useOnClickOutside.js';
+import familyAvatar from '../assets/familyavatar.png';
 
 export default function HeaderBar({ 
   gasUrl, 
@@ -34,14 +35,24 @@ export default function HeaderBar({
       
       {/* Top Row: Title (Far Left) & Three Icons (Far Right) */}
       <div className="flex items-center justify-between w-full">
-        {/* Title & Dollar Icon */}
+        {/* Title & SVG-wrapped family avatar */}
         <div className="flex items-center space-x-2">
-          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-            <DollarSign className="w-6 h-6 sm:w-7 sm:h-7" />
-          </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white whitespace-nowrap">
             家庭記賬App
           </h1>
+          <svg
+            className="w-64 sm:w-80 lg:w-96 h-auto shrink-0"
+            viewBox="0 0 432 147"
+            role="img"
+            aria-label="家庭圖示"
+          >
+            <image
+              href={familyAvatar}
+              width="432"
+              height="147"
+              preserveAspectRatio="xMidYMid meet"
+            />
+          </svg>
         </div>
 
         {/* Action Icons */}
