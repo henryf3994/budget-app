@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { RefreshCw, MoreVertical, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { MoreVertical, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { useOnClickOutside } from '../hooks/useOnClickOutside.js';
 import familyAvatar from '../assets/familyavatar.png';
 
@@ -38,20 +38,8 @@ export default function HeaderBar({
       
       {/* Top Row: Centered brand + actions docked top-right */}
       <div className="relative flex flex-col items-center gap-3 pt-2 sm:pt-3">
-        {/* Actions anchored top-right */}
-        <div className="absolute top-0 right-0 flex items-center gap-2">
-          {/* Refresh — always visible */}
-          <button 
-            onClick={onRefresh}
-            disabled={loading}
-            aria-label="重新整理數據"
-            title="重新整理數據"
-            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
-          </button>
-
-          {/* ⋯ Kebab menu (Database GAS URL + Category settings) */}
+        {/* Actions anchored top-right (all in the ⋯ kebab menu) */}
+        <div className="absolute top-0 right-0">
           <div ref={menuRef} className="relative">
             <button 
               onClick={() => setShowMenu(prev => !prev)}
@@ -68,6 +56,12 @@ export default function HeaderBar({
 
             {showMenu && (
               <div className="absolute right-0 top-full mt-2 w-48 p-1.5 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 flex flex-col">
+                <button 
+                  onClick={() => { onRefresh(); setShowMenu(false); }}
+                  className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? '重新整理中…' : '重新整理數據'}
+                </button>
                 <button 
                   onClick={() => { onOpenUrlModal(); setShowMenu(false); }}
                   className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 transition"
