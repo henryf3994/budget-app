@@ -379,7 +379,7 @@ export default function App() {
 
   // --- Render ---
   return (
-    <div className="min-h-screen bg-[#0d1117] text-slate-100 font-sans p-3 sm:p-6 md:p-8 pb-24">
+    <div className="min-h-screen bg-[#0d1117] text-slate-100 font-sans p-3 sm:p-6 md:p-8 pb-24 overflow-x-hidden">
       <div className="max-w-5xl mx-auto space-y-6">
         
         {/* Header 組件 */}

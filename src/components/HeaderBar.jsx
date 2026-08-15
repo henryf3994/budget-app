@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Database, RefreshCw, ChevronLeft, ChevronRight, Settings, Calendar } from 'lucide-react';
+import { RefreshCw, MoreVertical, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { useOnClickOutside } from '../hooks/useOnClickOutside.js';
 import familyAvatar from '../assets/familyavatar.png';
 
@@ -17,11 +17,14 @@ export default function HeaderBar({
 }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickerYear, setPickerYear] = useState(currentYear);
+  const [showMenu, setShowMenu] = useState(false);
   const pickerRef = useRef(null);
+  const menuRef = useRef(null);
 
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
   useOnClickOutside(pickerRef, () => setShowDatePicker(false));
+  useOnClickOutside(menuRef, () => setShowMenu(false));
 
   const handleMonthSelect = (selectedMonth) => {
     if (onSelectDate) {
@@ -33,15 +36,59 @@ export default function HeaderBar({
   return (
     <header className="flex flex-col gap-4 border-b border-slate-800 pb-4">
       
-      {/* Top Row: Title (Far Left) & Three Icons (Far Right) */}
-      <div className="flex items-center justify-between w-full">
-        {/* Title & SVG-wrapped family avatar */}
-        <div className="flex items-center space-x-2">
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white whitespace-nowrap">
-            家庭記賬App
-          </h1>
+      {/* Top Row: Centered brand + actions docked top-right */}
+      <div className="relative flex flex-col items-center gap-3 pt-2 sm:pt-3">
+        {/* Actions anchored top-right */}
+        <div className="absolute top-0 right-0 flex items-center gap-2">
+          {/* Refresh — always visible */}
+          <button 
+            onClick={onRefresh}
+            disabled={loading}
+            aria-label="重新整理數據"
+            title="重新整理數據"
+            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
+          </button>
+
+          {/* ⋯ Kebab menu (Database GAS URL + Category settings) */}
+          <div ref={menuRef} className="relative">
+            <button 
+              onClick={() => setShowMenu(prev => !prev)}
+              aria-label="更多選項"
+              title="更多選項"
+              className={`p-2.5 rounded-xl border transition ${
+                gasUrl 
+                  ? 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800' 
+                  : 'bg-rose-500/10 border-rose-500/30 text-rose-400 animate-pulse'
+              }`}
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-2 w-48 p-1.5 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 flex flex-col">
+                <button 
+                  onClick={() => { onOpenUrlModal(); setShowMenu(false); }}
+                  className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 transition"
+                >
+                  設定 GAS API URL
+                </button>
+                <button 
+                  onClick={() => { onOpenCategoryModal(); setShowMenu(false); }}
+                  className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 transition"
+                >
+                  管理類別與顏色
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Slim centered banner + title */}
+        <div className="flex flex-col items-center">
           <svg
-            className="w-64 sm:w-80 lg:w-96 h-auto shrink-0"
+            className="w-40 sm:w-48 h-auto"
             viewBox="0 0 432 147"
             role="img"
             aria-label="家庭圖示"
@@ -53,41 +100,9 @@ export default function HeaderBar({
               preserveAspectRatio="xMidYMid meet"
             />
           </svg>
-        </div>
-
-        {/* Action Icons */}
-        <div className="flex items-center space-x-2">
-          <button 
-            onClick={onOpenUrlModal}
-            aria-label="設定 GAS API URL"
-            title="設定 GAS API URL"
-            className={`p-2.5 rounded-xl border transition-all ${
-              gasUrl 
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
-                : 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20 animate-pulse'
-            }`}
-          >
-            <Database className="w-5 h-5" />
-          </button>
-
-          <button 
-            onClick={onRefresh}
-            disabled={loading}
-            aria-label="重新整理數據"
-            title="重新整理數據"
-            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
-          </button>
-
-          <button 
-            onClick={onOpenCategoryModal}
-            aria-label="管理類別與顏色"
-            title="管理類別與顏色"
-            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            家庭記賬App
+          </h1>
         </div>
       </div>
 
