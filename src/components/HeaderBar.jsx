@@ -88,7 +88,7 @@ export default function HeaderBar({
         {/* Slim centered banner + title */}
         <div className="flex flex-col items-center">
           <svg
-            className="w-40 sm:w-48 h-auto"
+            className="w-[272px] sm:w-[326px] h-auto"
             viewBox="0 0 432 147"
             role="img"
             aria-label="家庭圖示"
