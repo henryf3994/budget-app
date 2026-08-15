@@ -132,7 +132,7 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
   const rangeLabel = `${windowStart.year}年${windowStart.month}月 - ${windowEnd.year}年${windowEnd.month}月`;
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
+    <div className="bg-slate-900/50 border border-slate-800/80 rounded-2xl p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
       {/* 標題 + 切換按鈕 */}
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-base font-semibold text-white flex items-center gap-2">
@@ -162,7 +162,13 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
           </button>
         </div>
       </div>
-      <p className="text-xs text-slate-500 mb-3">{rangeLabel}</p>
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+        <p className="text-xs text-slate-500">{rangeLabel}</p>
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-300 bg-slate-950/50 border border-slate-800 rounded-full px-2.5 py-0.5">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: lineColor }} />
+          {viewMode === 'total' ? '總支出' : (effectiveCategory?.name || '其他')}
+        </span>
+      </div>
 
       {/* 分類選擇（僅分類趨勢模式顯示） */}
       {viewMode === 'category' && (
@@ -188,8 +194,8 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="支出趨勢圖">
         <defs>
           <linearGradient id="trendArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lineColor} stopOpacity="0.35" />
-            <stop offset="100%" stopColor={lineColor} stopOpacity="0.02" />
+            <stop offset="0%" stopColor={lineColor} stopOpacity="0.45" />
+            <stop offset="100%" stopColor={lineColor} stopOpacity="0.04" />
           </linearGradient>
         </defs>
 
@@ -213,6 +219,18 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
 
         {/* 面積填色 */}
         <path d={areaPath} fill="url(#trendArea)" />
+
+        {/* 折線柔光 */}
+        <path
+          d={linePath}
+          fill="none"
+          stroke={lineColor}
+          strokeOpacity="0.22"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        />
 
         {/* 折線 */}
         <path

@@ -379,8 +379,15 @@ export default function App() {
 
   // --- Render ---
   return (
-    <div className="min-h-screen bg-[#0d1117] text-slate-100 font-sans p-3 sm:p-6 md:p-8 pb-24 overflow-x-hidden">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="min-h-screen relative bg-[#0d1117] text-slate-100 font-sans p-3 sm:p-6 md:p-8 pb-24 overflow-x-hidden">
+      {/* Ambient background glows for depth */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-32 -right-28 w-[34rem] h-[34rem] rounded-full bg-indigo-600/10 blur-3xl" />
+        <div className="absolute -bottom-40 -left-28 w-[38rem] h-[38rem] rounded-full bg-emerald-600/10 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-[48rem] h-[32rem] rounded-full bg-cyan-500/5 blur-3xl" />
+      </div>
+
+      <div className="max-w-5xl mx-auto space-y-6 relative">
         
         {/* Header 組件 */}
         <HeaderBar 
@@ -464,12 +471,12 @@ export default function App() {
       </div>
 
       {/* Floating Bottom Navigation */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 p-1.5 rounded-full flex items-center shadow-2xl z-40">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md border border-slate-700/70 p-1.5 rounded-full flex items-center shadow-2xl shadow-black/50 ring-1 ring-white/5 z-40">
         <button
           onClick={() => setActiveTab('overview')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
             activeTab === 'overview' 
-              ? 'bg-indigo-600 text-white shadow-lg' 
+              ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-900/40' 
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
           }`}
         >
@@ -480,7 +487,7 @@ export default function App() {
           onClick={() => setActiveTab('transactions')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
             activeTab === 'transactions' 
-              ? 'bg-emerald-600 text-white shadow-lg' 
+              ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-900/40' 
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
           }`}
         >

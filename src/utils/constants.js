@@ -39,8 +39,8 @@ const PAYMENT_METHOD_STYLES = {
     badge: 'bg-amber-500/15 text-amber-200 border border-amber-500/40'
   },
   '轉賬': {
-    button: 'bg-sky-600/20 border-sky-500 text-sky-200',
-    badge: 'bg-sky-500/15 text-sky-200 border border-sky-500/40'
+    button: 'bg-fuchsia-600/20 border-fuchsia-500 text-fuchsia-200',
+    badge: 'bg-fuchsia-500/15 text-fuchsia-200 border border-fuchsia-500/40'
   },
   Alipay: {
     button: 'bg-emerald-600/20 border-emerald-500 text-emerald-200',

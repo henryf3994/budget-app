@@ -19,7 +19,7 @@ function CategoryBreakdown({ breakdownData, selectedCategoryFilter, onCategoryFi
   });
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
+    <div className="bg-slate-900/50 border border-slate-800/80 rounded-2xl p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
       <h2 className="text-base font-semibold text-white mb-4 flex items-center justify-between">
         <span>開支類別比例 (Category Breakdown)</span>
         <span className="text-xs text-slate-500 font-normal">點擊下方分類可快速篩選列表</span>
@@ -41,7 +41,7 @@ function CategoryBreakdown({ breakdownData, selectedCategoryFilter, onCategoryFi
                   backgroundColor: cat.color,
                 }}
                 title={`${cat.name}: ${cat.percentage}% (HK$ ${(Number(cat.total) || 0).toLocaleString()})`}
-                className={`h-full cursor-pointer transition-all duration-200 first:rounded-l-full last:rounded-r-full hover:opacity-100 ${
+                className={`h-full cursor-pointer transition-all duration-200 first:rounded-l-full last:rounded-r-full hover:opacity-100 hover:brightness-125 ${
                   hasSelection && !isSelected ? 'opacity-30' : 'opacity-90'
                 }`}
               />
@@ -62,7 +62,7 @@ function CategoryBreakdown({ breakdownData, selectedCategoryFilter, onCategoryFi
               className={`p-3 rounded-xl border text-left transition-all min-w-0 ${
                 isSelected
                   ? 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500'
-                  : 'border-slate-800/80 bg-slate-950/40 hover:border-slate-700'
+                  : 'border-slate-800/80 bg-slate-950/40 hover:border-indigo-500/40 hover:-translate-y-0.5'
               }`}
             >
               <div className="flex items-center space-x-2 mb-1.5 min-w-0">
@@ -71,10 +71,10 @@ function CategoryBreakdown({ breakdownData, selectedCategoryFilter, onCategoryFi
                   {cat.name}
                 </span>
               </div>
-              <div className="text-[1rem] font-bold text-white whitespace-nowrap shrink-0">
+              <div className="text-[1rem] font-bold text-white whitespace-nowrap shrink-0 tabular-nums">
                 HK$ {(Number(cat.total) || 0).toLocaleString()}
               </div>
-              <div className="text-[1rem] font-bold text-slate-300 mt-1 whitespace-nowrap shrink-0">
+              <div className="text-[1rem] font-bold text-slate-300 mt-1 whitespace-nowrap shrink-0 tabular-nums">
                 {cat.percentage}%
               </div>
             </button>
