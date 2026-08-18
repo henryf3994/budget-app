@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { MoreVertical, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { MoreVertical, ChevronLeft, ChevronRight, Calendar, RefreshCw, Database, Settings } from 'lucide-react';
 import { useOnClickOutside } from '../hooks/useOnClickOutside.js';
 import familyAvatar from '../assets/familyavatar.png';
 
@@ -34,10 +34,10 @@ export default function HeaderBar({
   };
 
   return (
-    <header className="flex flex-col gap-4 border-b border-slate-800 pb-4">
+    <header className="flex flex-col gap-5 border-b border-slate-800/80 pb-5">
       
       {/* Top Row: Centered brand + actions docked top-right */}
-      <div className="relative flex flex-col items-center gap-3 pt-2 sm:pt-3">
+      <div className="relative flex flex-col items-center gap-2 pt-1 sm:pt-2">
         {/* Actions anchored top-right (all in the ⋯ kebab menu) */}
         <div className="absolute top-0 right-0">
           <div ref={menuRef} className="relative">
@@ -45,7 +45,7 @@ export default function HeaderBar({
               onClick={() => setShowMenu(prev => !prev)}
               aria-label="更多選項"
               title="更多選項"
-              className={`p-2.5 rounded-xl border transition ${
+              className={`p-2.5 rounded-xl border shadow-sm transition focus-visible:outline-offset-2 ${
                 gasUrl 
                   ? 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800' 
                   : 'bg-rose-500/10 border-rose-500/30 text-rose-400 animate-pulse'
@@ -55,23 +55,26 @@ export default function HeaderBar({
             </button>
 
             {showMenu && (
-              <div className="absolute right-0 top-full mt-2 w-48 p-1.5 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 flex flex-col">
-                <button 
+              <div className="absolute right-0 top-full mt-2 w-56 p-1.5 bg-slate-900/95 backdrop-blur border border-slate-700/80 rounded-xl shadow-2xl z-50 flex flex-col">
+                <button
                   onClick={() => { onRefresh(); setShowMenu(false); }}
-                  className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
+                  <RefreshCw className={`w-4 h-4 text-indigo-300 ${loading ? 'animate-spin' : ''}`} />
                   {loading ? '重新整理中…' : '重新整理數據'}
                 </button>
-                <button 
+                <button
                   onClick={() => { onOpenUrlModal(); setShowMenu(false); }}
-                  className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 transition"
+                  className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 transition flex items-center gap-2"
                 >
+                  <Database className="w-4 h-4 text-emerald-300" />
                   設定 GAS API URL
                 </button>
-                <button 
+                <button
                   onClick={() => { onOpenCategoryModal(); setShowMenu(false); }}
-                  className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 transition"
+                  className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 transition flex items-center gap-2"
                 >
+                  <Settings className="w-4 h-4 text-violet-300" />
                   管理類別與顏色
                 </button>
               </div>
@@ -94,6 +97,7 @@ export default function HeaderBar({
               preserveAspectRatio="xMidYMid meet"
             />
           </svg>
+          <p className="text-[11px] tracking-[0.22em] uppercase font-semibold text-indigo-300/80 -mt-2">Family finance</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
             家庭記賬App
           </h1>
@@ -102,7 +106,7 @@ export default function HeaderBar({
 
       {/* Bottom Row: Date Navigator Centered */}
       <div className="flex justify-center w-full">
-        <div className="relative flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 shadow-inner">
+        <div className="relative flex items-center bg-slate-900/90 border border-slate-700/70 rounded-2xl p-1 shadow-inner shadow-black/20">
           <button 
             onClick={onPrevMonth} 
             aria-label="上一個月"
@@ -116,7 +120,7 @@ export default function HeaderBar({
               setPickerYear(currentYear);
               setShowDatePicker(!showDatePicker);
             }}
-            className="px-5 py-1 font-bold text-[1.8rem] tracking-wider min-w-[150px] text-center text-slate-100 hover:bg-slate-800/80 rounded-lg transition flex items-center justify-center gap-2"
+            className="px-4 sm:px-5 py-1.5 font-bold text-xl sm:text-2xl tracking-wide min-w-[150px] text-center text-slate-100 hover:bg-slate-800/80 rounded-xl transition flex items-center justify-center gap-2"
             title="點擊選擇月份"
           >
             <Calendar className="w-5 h-5 text-slate-400" />

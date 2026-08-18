@@ -379,7 +379,7 @@ export default function App() {
 
   // --- Render ---
   return (
-    <div className="min-h-screen relative bg-[#0d1117] text-slate-100 font-sans p-3 sm:p-6 md:p-8 pb-24 overflow-x-hidden">
+    <div className="min-h-screen relative bg-[#0b1020] text-slate-100 font-sans p-3 sm:p-6 md:p-8 pb-28 overflow-x-hidden">
       {/* Ambient background glows for depth */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-32 -right-28 w-[34rem] h-[34rem] rounded-full bg-indigo-600/10 blur-3xl" />
@@ -387,7 +387,7 @@ export default function App() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-[48rem] h-[32rem] rounded-full bg-cyan-500/5 blur-3xl" />
       </div>
 
-      <div className="max-w-5xl mx-auto space-y-6 relative">
+      <div className="max-w-6xl mx-auto space-y-6 relative">
         
         {/* Header 組件 */}
         <HeaderBar 
@@ -400,16 +400,20 @@ export default function App() {
           onRefresh={() => loadDataFromGAS()}
           onOpenUrlModal={() => setShowUrlModal(true)}
           onOpenCategoryModal={() => setShowCategoryModal(true)}
+          onSelectDate={(year, month) => {
+            setCurrentYear(year);
+            setCurrentMonth(month);
+          }}
         />
 
         {/* 系統狀態提示 */}
         {statusMsg.text && (
-          <div className={`p-3 rounded-xl border text-sm flex items-center gap-2 ${
+          <div role="status" className={`p-3 rounded-xl border text-sm flex items-center gap-2 shadow-lg ${
             statusMsg.type === 'error' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
             statusMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
             'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
           }`}>
-            <Clock className="w-4 h-4 animate-spin" />
+            <Clock className={`w-4 h-4 ${statusMsg.type === 'info' ? 'animate-spin' : ''}`} />
             <span>{statusMsg.text}</span>
           </div>
         )}
@@ -417,11 +421,11 @@ export default function App() {
         {/* --- 分頁 1: 總覽 --- */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            <div className="grid w-full grid-cols-2 gap-3">
-              <button onClick={() => setShowAddModal(true)} className="flex w-full items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3.5 rounded-xl font-medium text-base shadow-lg shadow-emerald-900/20 transition hover:scale-[1.02] active:scale-95">
+            <div className="grid w-full grid-cols-1 sm:grid-cols-2 gap-3">
+              <button onClick={() => setShowAddModal(true)} className="group flex w-full items-center justify-center space-x-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white px-6 py-3.5 rounded-2xl font-bold text-base shadow-lg shadow-emerald-950/40 transition hover:-translate-y-0.5 active:translate-y-0">
                 <Plus className="w-5 h-5" /><span>新增記帳</span>
               </button>
-              <button onClick={() => setShowRecurringModal(true)} className="flex w-full items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3.5 rounded-xl font-medium text-base shadow-lg shadow-indigo-900/20 transition hover:scale-[1.02] active:scale-95">
+              <button onClick={() => setShowRecurringModal(true)} className="flex w-full items-center justify-center space-x-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 hover:border-indigo-500/60 text-slate-100 px-6 py-3.5 rounded-2xl font-bold text-base shadow-lg shadow-black/10 transition hover:-translate-y-0.5 active:translate-y-0">
                 <RefreshCw className="w-4 h-4" /><span>恆常開支</span>
               </button>
             </div>
@@ -471,7 +475,7 @@ export default function App() {
       </div>
 
       {/* Floating Bottom Navigation */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md border border-slate-700/70 p-1.5 rounded-full flex items-center shadow-2xl shadow-black/50 ring-1 ring-white/5 z-40">
+      <nav aria-label="主要導覽" className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md border border-slate-700/70 p-1.5 rounded-full flex items-center shadow-2xl shadow-black/50 ring-1 ring-white/5 z-40">
         <button
           onClick={() => setActiveTab('overview')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
@@ -494,7 +498,7 @@ export default function App() {
           <List className="w-5 h-5" />
           <span className="hidden sm:inline">支帳明細</span>
         </button>
-      </div>
+      </nav>
 
       {/* --- Modals --- */}
       {showUrlModal && <UrlModal initialUrl={gasUrl} onClose={() => setShowUrlModal(false)} onSave={handleSaveUrl} />}
