@@ -2,59 +2,310 @@
 @tailwind components;
 @tailwind utilities;
 
+
+/* =========================================
+   FMH Budget
+   Warm Pixel Family Global Styles
+   ========================================= */
+
 :root {
-  color-scheme: dark;
-  background: #0b1020;
+  color-scheme: light;
+
+  /* Canvas */
+  --color-canvas: #FFF6E5;
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #FFFDF8;
+  --color-surface-warm: #FFF9EF;
+
+  /* Brand */
+  --color-primary: #F28C77;
+  --color-primary-dark: #D96F61;
+
+  --color-accent: #FAD02C;
+  --color-accent-dark: #D9AE16;
+
+  /* Typography / Icons */
+  --color-ink: #2A2356;
+  --color-ink-soft: #554F70;
+  --color-muted: #8F8995;
+  --color-muted-warm: #A69D91;
+
+  /* Status */
+  --color-success: #78B88A;
+  --color-danger: #E56B6F;
+
+  /* Pixel system */
+  --border-pixel: 2px solid #2A2356;
+  --border-pixel-thick: 4px solid #2A2356;
+
+  --shadow-pixel: 2px 3px 0 #2A2356;
+  --shadow-pixel-sm: 1px 2px 0 #2A2356;
+  --shadow-pixel-lg: 3px 4px 0 #2A2356;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-card: 14px;
+  --radius-lg: 18px;
+}
+
+
+/* =========================================
+   Base
+   ========================================= */
+
+html {
+  min-width: 320px;
+  background: var(--color-canvas);
 }
 
 body {
-  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  margin: 0;
+  min-width: 320px;
+
+  background: var(--color-canvas);
+  color: var(--color-ink);
+
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "PingFang TC",
+    "Microsoft JhengHei",
+    sans-serif;
+
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
   text-rendering: optimizeLegibility;
-  min-width: 320px;
-  background: #0b1020;
 }
 
-button, input, select {
+
+/* =========================================
+   Selection
+   ========================================= */
+
+::selection {
+  background: rgba(242, 140, 119, 0.35);
+  color: var(--color-ink);
+}
+
+
+/* =========================================
+   Interactive elements
+   ========================================= */
+
+button,
+input,
+select,
+textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
-button:focus-visible, input:focus-visible, select:focus-visible {
-  outline: 2px solid #818cf8;
+button {
+  font-family: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
-::selection {
-  background: rgba(129, 140, 248, 0.35);
-  color: #fff;
+
+/* =========================================
+   Inputs
+   ========================================= */
+
+input,
+select,
+textarea {
+  color: var(--color-ink);
+  background: var(--color-surface-soft);
+
+  border: 2px solid var(--color-ink);
+
+  border-radius: var(--radius-sm);
 }
 
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-muted);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--color-primary);
+}
+
+
+/* =========================================
+   Pixel UI utilities
+   ========================================= */
+
+@layer components {
+
+  /*
+   * Standard FMH card
+   */
+  .pixel-card {
+    background: var(--color-surface);
+    border: var(--border-pixel);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-pixel);
+  }
+
+
+  /*
+   * Primary CTA
+   */
+  .pixel-button-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    background: var(--color-primary);
+    color: #FFFFFF;
+
+    border: var(--border-pixel);
+    border-radius: 9999px;
+
+    box-shadow: var(--shadow-pixel);
+
+    font-weight: 700;
+
+    transition:
+      transform 120ms ease,
+      box-shadow 120ms ease;
+  }
+
+  .pixel-button-primary:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--shadow-pixel-lg);
+  }
+
+  .pixel-button-primary:active {
+    transform: translate(1px, 2px);
+    box-shadow: var(--shadow-pixel-sm);
+  }
+
+
+  /*
+   * Secondary / recurring expense CTA
+   */
+  .pixel-button-accent {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    background: var(--color-accent);
+    color: var(--color-ink);
+
+    border: var(--border-pixel);
+    border-radius: 9999px;
+
+    box-shadow: var(--shadow-pixel);
+
+    font-weight: 700;
+
+    transition:
+      transform 120ms ease,
+      box-shadow 120ms ease;
+  }
+
+  .pixel-button-accent:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--shadow-pixel-lg);
+  }
+
+  .pixel-button-accent:active {
+    transform: translate(1px, 2px);
+    box-shadow: var(--shadow-pixel-sm);
+  }
+
+
+  /*
+   * Pixel KPI / money display
+   *
+   * Ark Pixel will only activate if the
+   * font is actually loaded.
+   */
+  .pixel-number {
+    font-family:
+      "Ark Pixel",
+      "Press Start 2P",
+      monospace;
+
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+
+  /*
+   * Expense card left indicator
+   */
+  .expense-indicator {
+    width: 4px;
+    background: var(--color-primary);
+    border-radius: 4px 0 0 4px;
+  }
+
+
+  /*
+   * Pixel sticker
+   */
+  .pixel-sticker {
+    position: absolute;
+
+    pointer-events: none;
+
+    image-rendering: pixelated;
+  }
+}
+
+
+/* =========================================
+   Scrollbar
+   ========================================= */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #D8CFC0 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #D8CFC0;
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #BDB2A2;
+}
+
+
+/* =========================================
+   Reduced motion
+   ========================================= */
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-/* Slim, dark scrollbars to match the theme */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #334155 transparent;
-}
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-*::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 9999px;
-}
-*::-webkit-scrollbar-thumb:hover {
-  background: #475569;
 }
