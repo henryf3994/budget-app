@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Plus, RefreshCw, Settings, Database, Calendar, ChevronLeft, ChevronRight, 
-  Trash2, Edit3, X, Check, CreditCard, DollarSign, User, Tag, FileText, 
+import {
+  Plus, RefreshCw, Settings, Database, Calendar, ChevronLeft, ChevronRight,
+  Trash2, Edit3, X, Check, CreditCard, DollarSign, User, Tag, FileText,
   ChevronDown, PieChart, Lock, ArrowUpRight, CheckCircle2, Clock, List
 } from 'lucide-react';
 
@@ -72,7 +72,7 @@ export default function App() {
     try {
       const res = await fetch(url);
       const json = await res.json();
-      
+
       if (json.status === 'success') {
         // 修復重點 1：正確解構 GAS 回傳的 data 物件，確保必定為陣列
         const fetchedTransactions = Array.isArray(json.transactions)
@@ -281,12 +281,12 @@ export default function App() {
   };
 
   const handleAddCategory = (newCat) => setCategories(prev => [...prev, newCat]);
-  
+
   const handleDeleteCategory = (catId) => {
     if (categories.length <= 1) return alert('最少需保留一個類別！');
     const catToDelete = categories.find(c => c.id === catId);
     if (!catToDelete) return;
-    
+
     // 檢查是否有交易引用此類別
     const relatedCount = (Array.isArray(transactions) ? transactions : []).filter(t => t?.category === catToDelete.name).length;
     if (relatedCount > 0) {
@@ -368,7 +368,7 @@ export default function App() {
       if (!t) return false;
       const matchCategory = selectedCategoryFilter === 'ALL' || t.category === selectedCategoryFilter;
       const q = searchQuery.toLowerCase();
-      const matchSearch = !q || 
+      const matchSearch = !q ||
         (t.title && String(t.title).toLowerCase().includes(q)) ||
         (t.payer && String(t.payer).toLowerCase().includes(q)) ||
         (t.paymentMethod && String(t.paymentMethod).toLowerCase().includes(q)) ||
@@ -379,18 +379,12 @@ export default function App() {
 
   // --- Render ---
   return (
-    <div className="min-h-screen relative bg-[#0b1020] text-slate-100 font-sans p-3 sm:p-6 md:p-8 pb-28 overflow-x-hidden">
-      {/* Ambient background glows for depth */}
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-32 -right-28 w-[34rem] h-[34rem] rounded-full bg-indigo-600/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-28 w-[38rem] h-[38rem] rounded-full bg-emerald-600/10 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-[48rem] h-[32rem] rounded-full bg-cyan-500/5 blur-3xl" />
-      </div>
+    <div className="min-h-screen relative bg-canvas text-ink font-sans p-3 sm:p-6 md:p-8 pb-28 overflow-x-hidden">
 
       <div className="max-w-6xl mx-auto space-y-6 relative">
-        
+
         {/* Header 組件 */}
-        <HeaderBar 
+        <HeaderBar
           gasUrl={gasUrl}
           loading={loading}
           currentYear={currentYear}
@@ -408,10 +402,10 @@ export default function App() {
 
         {/* 系統狀態提示 */}
         {statusMsg.text && (
-          <div role="status" className={`p-3 rounded-xl border text-sm flex items-center gap-2 shadow-lg ${
-            statusMsg.type === 'error' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
-            statusMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-            'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
+          <div role="status" className={`pixel-card p-3 text-sm flex items-center gap-2 ${
+            statusMsg.type === 'error' ? 'bg-red-50 border-danger text-danger' :
+            statusMsg.type === 'success' ? 'bg-green-50 border-success text-success' :
+            'bg-surface-warm border-ink text-ink-soft'
           }`}>
             <Clock className={`w-4 h-4 ${statusMsg.type === 'info' ? 'animate-spin' : ''}`} />
             <span>{statusMsg.text}</span>
@@ -422,28 +416,28 @@ export default function App() {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             <div className="grid w-full grid-cols-1 sm:grid-cols-2 gap-3">
-              <button onClick={() => setShowAddModal(true)} className="group flex w-full items-center justify-center space-x-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white px-6 py-3.5 rounded-2xl font-bold text-base shadow-lg shadow-emerald-950/40 transition hover:-translate-y-0.5 active:translate-y-0">
+              <button onClick={() => setShowAddModal(true)} className="pixel-button-primary group flex w-full items-center justify-center space-x-2 px-6 py-3.5 text-base">
                 <Plus className="w-5 h-5" /><span>新增記帳</span>
               </button>
-              <button onClick={() => setShowRecurringModal(true)} className="flex w-full items-center justify-center space-x-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 hover:border-indigo-500/60 text-slate-100 px-6 py-3.5 rounded-2xl font-bold text-base shadow-lg shadow-black/10 transition hover:-translate-y-0.5 active:translate-y-0">
+              <button onClick={() => setShowRecurringModal(true)} className="pixel-button-accent flex w-full items-center justify-center space-x-2 px-6 py-3.5 text-base">
                 <RefreshCw className="w-4 h-4" /><span>恆常開支</span>
               </button>
             </div>
 
-            <SummaryCards 
+            <SummaryCards
               totalExpense={totalExpense}
               transactionCount={currentMonthTransactions.length}
               totalRecurringExpense={totalRecurringExpense}
               recurringCount={Array.isArray(recurringExpenses) ? recurringExpenses.length : 0}
             />
 
-            <CategoryBreakdown 
+            <CategoryBreakdown
               breakdownData={categoryBreakdown}
               selectedCategoryFilter={selectedCategoryFilter}
               onCategoryFilterChange={setSelectedCategoryFilter}
             />
 
-            <ExpenseTrendChart 
+            <ExpenseTrendChart
               transactions={transactions}
               categories={categories}
               currentYear={currentYear}
@@ -459,7 +453,7 @@ export default function App() {
         {/* --- 分頁 2: 支帳明細 --- */}
         {activeTab === 'transactions' && (
           <div className="space-y-6">
-            <TransactionList 
+            <TransactionList
               transactions={filteredTransactions}
               categories={categories}
               selectedCategoryFilter={selectedCategoryFilter}
@@ -475,13 +469,13 @@ export default function App() {
       </div>
 
       {/* Floating Bottom Navigation */}
-      <nav aria-label="主要導覽" className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md border border-slate-700/70 p-1.5 rounded-full flex items-center shadow-2xl shadow-black/50 ring-1 ring-white/5 z-40">
+      <nav aria-label="主要導覽" className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 pixel-card p-1.5 flex items-center z-40">
         <button
           onClick={() => setActiveTab('overview')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
-            activeTab === 'overview' 
-              ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-900/40' 
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            activeTab === 'overview'
+              ? 'bg-primary text-white shadow-pixel-sm'
+              : 'text-ink-soft hover:text-ink hover:bg-surface-warm'
           }`}
         >
           <PieChart className="w-5 h-5" />
@@ -490,9 +484,9 @@ export default function App() {
         <button
           onClick={() => setActiveTab('transactions')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
-            activeTab === 'transactions' 
-              ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-900/40' 
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            activeTab === 'transactions'
+              ? 'bg-accent text-ink shadow-pixel-sm'
+              : 'text-ink-soft hover:text-ink hover:bg-surface-warm'
           }`}
         >
           <List className="w-5 h-5" />
@@ -506,7 +500,7 @@ export default function App() {
       {showRecurringModal && <RecurringModal recurringExpenses={recurringExpenses} categories={categories} onClose={() => setShowRecurringModal(false)} onAdd={handleAddRecurring} onDelete={handleDeleteRecurring} loading={loading} />}
       {showAddModal && <AddTransactionModal categories={categories} onClose={() => setShowAddModal(false)} onSubmit={handleAddTransaction} loading={loading} />}
       {editingTransaction && <EditTransactionModal transaction={editingTransaction} categories={categories} onClose={() => setEditingTransaction(null)} onSubmit={handleUpdateTransaction} loading={loading} />}
-      
+
     </div>
   );
 }

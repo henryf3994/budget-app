@@ -7,37 +7,35 @@ import { ReceiptText, Repeat2 } from 'lucide-react';
 function SummaryCards({ totalExpense, transactionCount, totalRecurringExpense, recurringCount }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="bg-slate-900/60 backdrop-blur-sm border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all hover:border-emerald-500/30 hover:-translate-y-0.5">
-        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-400 to-emerald-600/80"></div>
-        <div aria-hidden="true" className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-emerald-500/10 blur-2xl"></div>
+      <div className="pixel-card p-5 relative overflow-hidden transition-transform hover:-translate-y-0.5">
+        <div className="absolute top-0 left-0 w-1 h-full bg-success"></div>
         <div className="flex items-start justify-between gap-3">
-          <div className="text-xs font-semibold text-slate-400 tracking-wider uppercase mb-1">
-            本月總開支 <span className="text-slate-600">/ Total</span>
+          <div className="text-xs font-semibold text-ink-soft tracking-wider uppercase mb-1">
+            本月總開支 <span className="text-muted">/ Total</span>
           </div>
-          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/15 text-emerald-300"><ReceiptText className="w-4 h-4" /></div>
+          <div className="p-2 rounded-pixel-sm bg-green-50 border-2 border-success text-success"><ReceiptText className="w-4 h-4" /></div>
         </div>
-        <div className="text-3xl font-extrabold text-white tracking-tight tabular-nums">
+        <div className="pixel-number font-pixel text-pixel-xl text-ink tracking-tight tabular-nums">
           HK$ {totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
-        <div className="mt-3 text-xs text-slate-500 flex items-center gap-2">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+        <div className="mt-3 text-xs text-muted flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-success"></span>
           共 {transactionCount} 筆明細紀錄
         </div>
       </div>
 
-      <div className="bg-slate-900/60 backdrop-blur-sm border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all hover:border-indigo-500/30 hover:-translate-y-0.5">
-        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-400 to-indigo-600/80"></div>
-        <div aria-hidden="true" className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-indigo-500/10 blur-2xl"></div>
+      <div className="pixel-card p-5 relative overflow-hidden transition-transform hover:-translate-y-0.5">
+        <div className="absolute top-0 left-0 w-1 h-full bg-accent"></div>
         <div className="flex items-start justify-between gap-3">
-          <div className="text-xs font-semibold text-slate-400 tracking-wider uppercase mb-1">
+          <div className="text-xs font-semibold text-ink-soft tracking-wider uppercase mb-1">
             每月固定恆常開支
           </div>
-          <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/15 text-indigo-300"><Repeat2 className="w-4 h-4" /></div>
+          <div className="p-2 rounded-pixel-sm bg-yellow-50 border-2 border-accent-dark text-accent-dark"><Repeat2 className="w-4 h-4" /></div>
         </div>
-        <div className="text-3xl font-extrabold text-indigo-300 tracking-tight tabular-nums">
+        <div className="pixel-number font-pixel text-pixel-xl text-ink tracking-tight tabular-nums">
           HK$ {totalRecurringExpense.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </div>
-        <div className="mt-3 text-xs text-indigo-400/80 flex items-center gap-2">
+        <div className="mt-3 text-xs text-muted flex items-center gap-2">
           <span>{recurringCount} 個預定訂閱/恆常項目</span>
         </div>
       </div>
