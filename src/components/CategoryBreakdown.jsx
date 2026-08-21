@@ -97,10 +97,10 @@ function CategoryBreakdown({ breakdownData, selectedCategoryFilter, onCategoryFi
             <button
               key={cat.id}
               onClick={() => onCategoryFilterChange(isSelected ? 'ALL' : cat.name)}
-              className={`p-3 rounded-xl border text-left transition-all min-w-0 ${
+              className={`pixel-border-sm p-3 text-left transition-all min-w-0 ${
                 isSelected
-                  ? 'border-2 border-primary bg-surface-warm shadow-pixel-sm'
-                  : 'border-2 border-ink bg-surface-soft hover:border-primary hover:-translate-y-0.5'
+                  ? 'bg-surface-warm shadow-pixel-sm'
+                  : 'bg-surface-soft hover:-translate-y-0.5'
               }`}
             >
               <div className="flex items-center space-x-2 mb-1.5 min-w-0">

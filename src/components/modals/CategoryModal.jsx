@@ -47,49 +47,53 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div 
         ref={modalRef}
-        className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+        className="category-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-ink">
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <Settings className="w-5 h-5 text-indigo-400" />
+        <h3 className="text-lg font-bold text-ink mb-4 flex items-center gap-2">
+          <Settings className="w-5 h-5 text-primary-dark" />
           類別與熱門標題管理
         </h3>
 
-        <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl mb-4 space-y-2">
-          <div className="text-xs font-semibold text-slate-300">新增分類與快速標題：</div>
+        <div className="pixel-border-sm bg-surface p-3 rounded-pixel-sm mb-4 space-y-2">
+          <div className="text-xs font-semibold text-primary-dark">新增分類與快速標題：</div>
           <div className="flex items-center gap-2">
             <input 
               type="color" 
               value={newCatColor}
               onChange={(e) => setNewCatColor(e.target.value)}
-              className="w-8 h-8 rounded border-0 bg-transparent cursor-pointer"
+              className="w-8 h-8 rounded-pixel-sm border-2 border-ink bg-surface-warm cursor-pointer"
             />
+            <div className="pixel-border-sm flex-1 p-0.5">
+              <input 
+                type="text" 
+                maxLength={20}
+                placeholder="類別名稱 (如: 寵物生活)"
+                value={newCatName}
+                onChange={(e) => {
+                  setNewCatName(e.target.value);
+                  setErrorMsg('');
+                }}
+                className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-1.5 text-xs text-ink focus:outline-none"
+              />
+            </div>
+          </div>
+          {errorMsg && <p className="text-[11px] text-danger">{errorMsg}</p>}
+          <div className="pixel-border-sm p-0.5">
             <input 
               type="text" 
-              maxLength={20}
-              placeholder="類別名稱 (如: 寵物生活)"
-              value={newCatName}
-              onChange={(e) => {
-                setNewCatName(e.target.value);
-                setErrorMsg('');
-              }}
-              className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none"
+              maxLength={200}
+              placeholder="預設熱門標題，用逗號分隔 (如: 糧食, 診所, 玩具)"
+              value={newCatTitles}
+              onChange={(e) => setNewCatTitles(e.target.value)}
+              className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-1.5 text-xs text-ink focus:outline-none"
             />
           </div>
-          {errorMsg && <p className="text-[11px] text-rose-400">{errorMsg}</p>}
-          <input 
-            type="text" 
-            maxLength={200}
-            placeholder="預設熱門標題，用逗號分隔 (如: 糧食, 診所, 玩具)"
-            value={newCatTitles}
-            onChange={(e) => setNewCatTitles(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none"
-          />
           <button 
             onClick={handleAdd}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-1.5 rounded-lg transition"
+            className="pixel-button-primary w-full text-xs py-1.5"
           >
             + 新增類別
           </button>
@@ -97,17 +101,17 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
 
         <div className="space-y-2 max-h-60 overflow-y-auto">
           {categories.map(cat => (
-            <div key={cat.id} className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center justify-between">
+            <div key={cat.id} className="pixel-border-sm p-3 bg-surface flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <span className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.color }}></span>
                 <div>
-                  <div className="text-sm font-semibold text-white">{cat.name}</div>
-                  <div className="text-[10px] text-slate-500 truncate max-w-[200px]">
+                  <div className="text-sm font-semibold text-ink">{cat.name}</div>
+                  <div className="text-[10px] text-muted truncate max-w-[200px]">
                     預設: {cat.defaultTitles ? cat.defaultTitles.join(', ') : '無'}
                   </div>
                 </div>
               </div>
-              <button onClick={() => onDeleteCategory(cat.id)} className="text-slate-500 hover:text-rose-400 p-1">
+              <button onClick={() => onDeleteCategory(cat.id)} className="transaction-action-button text-danger p-1" title="刪除類別">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>

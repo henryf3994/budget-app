@@ -469,7 +469,7 @@ export default function App() {
       </div>
 
       {/* Floating Bottom Navigation */}
-      <nav aria-label="主要導覽" className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 pixel-card p-1.5 flex items-center z-40">
+      <nav aria-label="主要導覽" className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 pixel-card p-1.5 flex items-center gap-1 z-40">
         <button
           onClick={() => setActiveTab('overview')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
