@@ -92,7 +92,7 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
 
   // 有效分類（若選取的分類被刪除則退回第一個）
   const effectiveCategory = categories.find(c => c.id === selectedCategoryId) || categories[0];
-  const lineColor = viewMode === 'total' ? '#6366f1' : (effectiveCategory?.color || '#6366f1');
+  const lineColor = viewMode === 'total' ? '#F28C77' : (effectiveCategory?.color || '#F28C77');
 
   // 要繪製的數值
   const values = useMemo(() => {
@@ -132,30 +132,30 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
   const rangeLabel = `${windowStart.year}年${windowStart.month}月 - ${windowEnd.year}年${windowEnd.month}月`;
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800/80 rounded-2xl p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+    <div className="pixel-card p-5">
       {/* 標題 + 切換按鈕 */}
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-base font-semibold text-white flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-indigo-400" />
+        <h2 className="text-base font-semibold text-ink flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-primary-dark" />
           <span>支出趨勢 (Expense Trend)</span>
         </h2>
-        <div className="flex items-center gap-1 bg-slate-950/60 border border-slate-800 rounded-lg p-1">
+        <div className="flex items-center gap-1 rounded-pixel-sm border-2 border-ink bg-surface-warm p-1">
           <button
             onClick={() => setViewMode('total')}
-            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+            className={`px-3 py-1 rounded-pixel-sm text-xs font-semibold transition-all ${
               viewMode === 'total'
-                ? 'bg-indigo-600 text-white shadow'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-primary text-white shadow-pixel-sm'
+                : 'bg-transparent text-muted-warm hover:text-ink'
             }`}
           >
             總支出
           </button>
           <button
             onClick={() => setViewMode('category')}
-            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+            className={`px-3 py-1 rounded-pixel-sm text-xs font-semibold transition-all ${
               viewMode === 'category'
-                ? 'bg-indigo-600 text-white shadow'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-primary text-white shadow-pixel-sm'
+                : 'bg-transparent text-muted-warm hover:text-ink'
             }`}
           >
             分類趨勢
@@ -163,11 +163,7 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
         </div>
       </div>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-        <p className="text-xs text-slate-500">{rangeLabel}</p>
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-300 bg-slate-950/50 border border-slate-800 rounded-full px-2.5 py-0.5">
-          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: lineColor }} />
-          {viewMode === 'total' ? '總支出' : (effectiveCategory?.name || '其他')}
-        </span>
+        <p className="text-xs text-muted">{rangeLabel}</p>
       </div>
 
       {/* 分類選擇（僅分類趨勢模式顯示） */}
@@ -179,8 +175,8 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
               onClick={() => setSelectedCategoryId(cat.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                 effectiveCategory?.id === cat.id
-                  ? 'border-indigo-500 bg-indigo-500/10 text-white ring-1 ring-indigo-500'
-                  : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                  ? 'border-2 border-primary bg-surface-warm text-ink shadow-pixel-sm'
+                  : 'border-2 border-ink bg-surface-soft text-ink-soft hover:border-primary hover:text-ink'
               }`}
             >
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
@@ -207,11 +203,11 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
               y1={g.y}
               x2={W - PAD_R}
               y2={g.y}
-              stroke="#1e293b"
+              stroke="#E7DCCB"
               strokeWidth="1"
               strokeDasharray={i === 0 ? '0' : '4 4'}
             />
-            <text x={PAD_L - 8} y={g.y + 4} textAnchor="end" fontSize="11" fill="#64748b">
+            <text x={PAD_L - 8} y={g.y + 4} textAnchor="end" fontSize="11" fill="#8F8995">
               {formatCompact(g.value)}
             </text>
           </g>
@@ -270,7 +266,7 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
                 cx={xPos(i)}
                 cy={yPos(v)}
                 r={isHighlight ? 6 : 4}
-                fill={isHighlight ? lineColor : '#0d1117'}
+                fill={isHighlight ? lineColor : '#FFF9EF'}
                 stroke={lineColor}
                 strokeWidth={isHighlight ? 3 : 2}
                 className="transition-all"
@@ -307,7 +303,7 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
                   y={H - 26}
                   textAnchor="middle"
                   fontSize="10"
-                  fill={isHighlight ? '#fff' : '#64748b'}
+                  fill={isHighlight ? '#2A2356' : '#8F8995'}
                 >
                   {m.year}
                 </text>
@@ -318,7 +314,7 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
                 textAnchor="middle"
                 fontSize="11"
                 fontWeight={isHighlight ? 700 : 400}
-                fill={isHighlight ? '#fff' : '#64748b'}
+                fill={isHighlight ? '#2A2356' : '#8F8995'}
               >
                 {m.month}月
               </text>

@@ -158,6 +158,93 @@ textarea:focus {
     box-shadow: var(--shadow-pixel);
   }
 
+  /*
+   * Reusable stepped pixel corners. The inner cutout inherits the element
+   * background, so these utilities do not impose a surface color.
+   */
+  .pixel-border-sm,
+  .pixel-border,
+  .pixel-border-lg {
+    position: relative;
+    border: 0;
+    isolation: isolate;
+  }
+
+  .pixel-border-sm::before,
+  .pixel-border-sm::after,
+  .pixel-border::before,
+  .pixel-border::after,
+  .pixel-border-lg::before,
+  .pixel-border-lg::after {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    content: '';
+  }
+
+  .pixel-border-sm::before,
+  .pixel-border::before,
+  .pixel-border-lg::before {
+    z-index: -2;
+    background: var(--color-ink);
+  }
+
+  .pixel-border-sm::after,
+  .pixel-border::after,
+  .pixel-border-lg::after {
+    z-index: -1;
+    background: inherit;
+  }
+
+  .pixel-border-sm::before,
+  .pixel-border-sm::after {
+    clip-path: polygon(
+      3px 0, calc(100% - 3px) 0,
+      calc(100% - 3px) 2px, 100% 2px,
+      100% calc(100% - 2px), calc(100% - 3px) calc(100% - 2px),
+      calc(100% - 3px) 100%, 3px 100%,
+      3px calc(100% - 2px), 0 calc(100% - 2px),
+      0 2px, 3px 2px
+    );
+  }
+
+  .pixel-border::before,
+  .pixel-border::after {
+    clip-path: polygon(
+      6px 0, calc(100% - 6px) 0,
+      calc(100% - 6px) 2px, calc(100% - 2px) 2px,
+      calc(100% - 2px) 6px, 100% 6px,
+      100% calc(100% - 6px), calc(100% - 2px) calc(100% - 6px),
+      calc(100% - 2px) calc(100% - 2px), calc(100% - 6px) calc(100% - 2px),
+      calc(100% - 6px) 100%, 6px 100%,
+      6px calc(100% - 2px), 2px calc(100% - 2px),
+      2px calc(100% - 6px), 0 calc(100% - 6px),
+      0 6px, 2px 6px, 2px 2px, 6px 2px
+    );
+  }
+
+  .pixel-border-lg::before,
+  .pixel-border-lg::after {
+    clip-path: polygon(
+      8px 0, calc(100% - 8px) 0,
+      calc(100% - 8px) 2px, calc(100% - 4px) 2px,
+      calc(100% - 4px) 6px, 100% 6px,
+      100% calc(100% - 6px), calc(100% - 4px) calc(100% - 6px),
+      calc(100% - 4px) calc(100% - 2px), calc(100% - 8px) calc(100% - 2px),
+      calc(100% - 8px) 100%, 8px 100%,
+      8px calc(100% - 2px), 4px calc(100% - 2px),
+      4px calc(100% - 6px), 0 calc(100% - 6px),
+      0 6px, 4px 6px, 4px 2px, 8px 2px
+    );
+  }
+
+  .pixel-border-sm::after,
+  .pixel-border::after,
+  .pixel-border-lg::after {
+    inset: 2px;
+    clip-path: none;
+  }
+
 
   /*
    * Primary CTA
@@ -253,6 +340,50 @@ textarea:focus {
     border-radius: 4px 0 0 4px;
   }
 
+  .transaction-row {
+    background: var(--color-surface);
+    border-bottom: 2px solid rgba(42, 35, 86, 0.1);
+    transition: background-color 140ms ease, border-color 140ms ease;
+  }
+
+  .transaction-row:last-child {
+    border-bottom: 0;
+  }
+
+  .transaction-row:hover {
+    border-color: rgba(242, 140, 119, 0.45);
+  }
+
+  .transaction-expense-indicator {
+    border-radius: 0;
+  }
+
+  .transaction-expense-indicator--coral {
+    background: var(--color-primary);
+    box-shadow: 2px 0 0 var(--color-primary-dark);
+  }
+
+  .transaction-expense-indicator--accent {
+    background: var(--color-accent);
+    box-shadow: 2px 0 0 var(--color-accent-dark);
+  }
+
+  .transaction-category-name {
+    display: inline-block;
+    padding: 1px 4px;
+    border-bottom: 2px solid currentColor;
+  }
+
+  .transaction-action-button {
+    min-width: 34px;
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-surface-warm);
+    border: 2px solid var(--color-ink);
+    box-shadow: var(--shadow-pixel-sm);
+  }
 
   /*
    * Pixel sticker
@@ -263,6 +394,53 @@ textarea:focus {
     pointer-events: none;
 
     image-rendering: pixelated;
+  }
+
+  .pixel-health-bar {
+    border: 4px solid var(--color-ink);
+    border-radius: 10px;
+    box-shadow: 2px 3px 0 var(--color-ink);
+  }
+
+  .pixel-health-cell {
+    position: relative;
+    flex: 1 1 0%;
+    min-width: 0;
+    overflow: hidden;
+    border-right: 2px solid var(--color-ink);
+    transition: filter 200ms ease;
+  }
+
+  .pixel-health-cell:last-child {
+    border-right: 0;
+  }
+
+  .pixel-health-cell--empty {
+    background: var(--color-surface-warm);
+  }
+
+  .pixel-health-cell--filled {
+    filter: brightness(0.94);
+  }
+
+  .pixel-health-cell--selected {
+    filter: brightness(1.2) saturate(1.08);
+  }
+
+  .pixel-health-cell--filled:hover {
+    filter: brightness(1.08) saturate(1.04);
+  }
+
+  .pixel-health-cell--filled::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 8%;
+    width: 78%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.68);
+    clip-path: polygon(0 0, 100% 0, 100% 75%, 88% 75%, 88% 100%, 12% 100%, 12% 75%, 0 75%);
+    pointer-events: none;
   }
 }
 
