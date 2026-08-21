@@ -50,30 +50,30 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div 
         ref={modalRef}
-        className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+        className="edit-transaction-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-ink">
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <Edit3 className="w-5 h-5 text-indigo-400" />
+        <h3 className="text-lg font-bold text-ink mb-4 flex items-center gap-2">
+          <Edit3 className="w-5 h-5 text-primary-dark" />
           編輯支出紀錄
         </h3>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
-            <label className="block text-xs font-medium text-slate-400 mb-1">日期 (date)</label>
+            <label className="block text-xs font-medium text-muted mb-1">日期 (date)</label>
             <button
               type="button"
               onClick={() => setShowCalendar(prev => !prev)}
-              className={`w-full bg-slate-950 border rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none flex items-center justify-between ${
-                fieldErrors.date ? 'border-rose-500' : 'border-slate-800 hover:border-indigo-500'
+              className={`pixel-border-sm w-full bg-surface-soft border-2 rounded-pixel-sm px-3 py-2 text-ink text-sm focus:outline-none flex items-center justify-between ${
+                fieldErrors.date ? 'border-danger' : 'border-ink hover:border-primary'
               }`}
             >
               <span>{formData.date || ''}</span>
-              <Calendar className="w-4 h-4 text-slate-500" />
+              <Calendar className="w-4 h-4 text-muted" />
             </button>
-            {fieldErrors.date && <p className="text-[11px] text-rose-400 mt-1">{fieldErrors.date}</p>}
+            {fieldErrors.date && <p className="text-[11px] text-danger mt-1">{fieldErrors.date}</p>}
             {showCalendar && (
               <MiniCalendar
                 selectedDate={formData.date || ''}
@@ -88,9 +88,9 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">金額 (amount)</label>
-            <div className="relative">
-              <span className="absolute left-3 top-2.5 text-slate-500 text-sm font-semibold">HK$</span>
+            <label className="block text-xs font-medium text-muted mb-1">金額 (amount)</label>
+            <div className="pixel-border-sm relative p-0.5">
+              <span className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted text-sm font-semibold">HK$</span>
               <input 
                 type="number"
                 step="0.01"
@@ -100,59 +100,61 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
                   setFormData({ ...formData, amount: e.target.value });
                   setFieldErrors(prev => ({ ...prev, amount: '' }));
                 }}
-                className={`w-full bg-slate-950 border rounded-xl pl-12 pr-3 py-2 text-slate-100 text-base font-bold focus:outline-none ${
-                  fieldErrors.amount ? 'border-rose-500' : 'border-slate-800 focus:border-indigo-500'
+                className={`relative z-0 w-full bg-surface-soft border-0 rounded-none pl-12 pr-3 py-2 text-ink text-base font-bold focus:outline-none ${
+                  fieldErrors.amount ? 'border-danger' : 'border-ink focus:border-primary'
                 }`}
               />
             </div>
-            {fieldErrors.amount && <p className="text-[11px] text-rose-400 mt-1">{fieldErrors.amount}</p>}
+            {fieldErrors.amount && <p className="text-[11px] text-danger mt-1">{fieldErrors.amount}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">類別 (category)</label>
-            <select 
-              value={formData.category || (safeCategories[0]?.name || '其他')}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
-            >
-              {safeCategories.length > 0 ? safeCategories.map(c => (
-                <option key={c.id} value={c.name}>{c.name}</option>
-              )) : (
-                <option value="其他">其他</option>
-              )}
-            </select>
+            <label className="block text-xs font-medium text-muted mb-1">類別 (category)</label>
+            <div className="pixel-border-sm p-0.5">
+              <select 
+                value={formData.category || (safeCategories[0]?.name || '其他')}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-ink text-sm focus:outline-none focus:border-primary"
+              >
+                {safeCategories.length > 0 ? safeCategories.map(c => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                )) : (
+                  <option value="其他">其他</option>
+                )}
+              </select>
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">項目標題 (title)</label>
-            <input 
-              type="text"
-              required
-              maxLength={50}
-              value={formData.title || ''}
-              onChange={(e) => {
-                setFormData({ ...formData, title: e.target.value });
-                setFieldErrors(prev => ({ ...prev, title: '' }));
-              }}
-              className={`w-full bg-slate-950 border rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none ${
-                fieldErrors.title ? 'border-rose-500' : 'border-slate-800 focus:border-indigo-500'
-              }`}
-            />
-            {fieldErrors.title && <p className="text-[11px] text-rose-400 mt-1">{fieldErrors.title}</p>}
+            <label className="block text-xs font-medium text-muted mb-1">項目標題 (title)</label>
+            <div className="pixel-border-sm p-0.5">
+              <input 
+                type="text"
+                required
+                maxLength={50}
+                value={formData.title || ''}
+                onChange={(e) => {
+                  setFormData({ ...formData, title: e.target.value });
+                  setFieldErrors(prev => ({ ...prev, title: '' }));
+                }}
+                className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-ink text-sm focus:outline-none"
+              />
+            </div>
+            {fieldErrors.title && <p className="text-[11px] text-danger mt-1">{fieldErrors.title}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">付款人 (payer)</label>
+            <label className="block text-xs font-medium text-muted mb-1">付款人 (payer)</label>
             <div className="grid grid-cols-2 gap-2">
               {PAYERS.map(p => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setFormData({ ...formData, payer: p })}
-                  className={`py-2 px-3 rounded-xl border text-sm font-semibold transition ${
+                  className={`pixel-border-sm py-2 px-3 rounded-xl border text-sm font-semibold transition ${
                     formData.payer === p
                       ? getPayerStyle(p, 'button')
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'
+                      : 'bg-surface-soft border-2 border-ink text-muted hover:bg-surface-warm'
                   }`}
                 >
                   {p}
@@ -162,17 +164,17 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">付款方式 (paymentMethod)</label>
+            <label className="block text-xs font-medium text-muted mb-1">付款方式 (paymentMethod)</label>
             <div className="grid grid-cols-2 gap-2 mb-2">
               {PAYMENT_METHODS.map(pm => (
                 <button
                   key={pm}
                   type="button"
                   onClick={() => setFormData({ ...formData, paymentMethod: pm, isCustomPayment: false })}
-                  className={`py-1.5 px-3 rounded-xl border text-xs font-medium transition ${
+                  className={`pixel-border-sm py-1.5 px-3 rounded-xl border text-xs font-medium transition ${
                     !formData.isCustomPayment && formData.paymentMethod === pm
                       ? getPaymentMethodStyle(pm, 'button')
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'
+                      : 'bg-surface-soft border-2 border-ink text-muted hover:bg-surface-warm'
                   }`}
                 >
                   {pm}
@@ -192,36 +194,38 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
                 });
                 setFieldErrors(prev => ({ ...prev, customPaymentMethod: '' }));
               }}
-              className={`w-full bg-slate-950 border rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none ${
-                formData.isCustomPayment ? 'border-rose-500 bg-rose-500/10' : 'border-slate-800'
-              } ${fieldErrors.customPaymentMethod ? 'border-rose-500' : ''}`}
+              className={`pixel-border-sm w-full bg-surface-soft border-2 rounded-pixel-sm px-3 py-1.5 text-xs text-ink focus:outline-none ${
+                formData.isCustomPayment ? 'border-danger bg-surface-warm' : 'border-ink'
+              } ${fieldErrors.customPaymentMethod ? 'border-danger' : ''}`}
             />
-            {fieldErrors.customPaymentMethod && <p className="text-[11px] text-rose-400 mt-1">{fieldErrors.customPaymentMethod}</p>}
+            {fieldErrors.customPaymentMethod && <p className="text-[11px] text-danger mt-1">{fieldErrors.customPaymentMethod}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">備註 (note)</label>
-            <input 
-              type="text"
-              maxLength={200}
-              value={formData.note || ''}
-              onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
-            />
+            <label className="block text-xs font-medium text-muted mb-1">備註 (note)</label>
+            <div className="pixel-border-sm p-0.5">
+              <input 
+                type="text"
+                maxLength={200}
+                value={formData.note || ''}
+                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-ink text-sm focus:outline-none"
+              />
+            </div>
           </div>
 
           <div className="pt-2 flex gap-2">
             <button 
               type="button"
               onClick={onClose}
-              className="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 rounded-xl transition"
+              className="pixel-button-accent w-1/2 py-2.5"
             >
               取消
             </button>
             <button 
               type="submit"
               disabled={loading}
-              className="w-1/2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl shadow-lg transition"
+              className="pixel-button-primary w-1/2 py-2.5"
             >
               儲存修改
             </button>
