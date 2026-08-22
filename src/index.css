@@ -148,6 +148,11 @@ textarea:focus {
 
 @layer components {
 
+  .overview-font {
+    font-family: "Fusion Pixel", monospace;
+    font-weight: 400;
+  }
+
   /*
    * Standard FMH card
    */
@@ -262,7 +267,8 @@ textarea:focus {
 
     box-shadow: var(--shadow-pixel);
 
-    font-weight: 700;
+    font-weight: 490;
+    font-size: 130% !important;
 
     transition:
       transform 120ms ease,
@@ -296,7 +302,8 @@ textarea:focus {
 
     box-shadow: var(--shadow-pixel);
 
-    font-weight: 700;
+    font-weight: 490;
+    font-size: 130% !important;
 
     transition:
       transform 120ms ease,
@@ -317,16 +324,15 @@ textarea:focus {
   /*
    * Pixel KPI / money display
    *
-   * Ark Pixel will only activate if the
+   * Fusion Pixel will only activate if the
    * font is actually loaded.
    */
   .pixel-number {
     font-family:
-      "Ark Pixel",
-      "Press Start 2P",
+      "Fusion Pixel",
       monospace;
 
-    font-weight: 700;
+    font-weight: normal;
     letter-spacing: 0.01em;
   }
 
@@ -335,7 +341,7 @@ textarea:focus {
    * Expense card left indicator
    */
   .expense-indicator {
-    width: 4px;
+    width: 6px;
     background: var(--color-primary);
     border-radius: 4px 0 0 4px;
   }
@@ -356,16 +362,6 @@ textarea:focus {
 
   .transaction-expense-indicator {
     border-radius: 0;
-  }
-
-  .transaction-expense-indicator--coral {
-    background: var(--color-primary);
-    box-shadow: 2px 0 0 var(--color-primary-dark);
-  }
-
-  .transaction-expense-indicator--accent {
-    background: var(--color-accent);
-    box-shadow: 2px 0 0 var(--color-accent-dark);
   }
 
   .transaction-category-name {
@@ -486,4 +482,14 @@ textarea:focus {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+
+@font-face {
+  font-family: "Fusion Pixel";
+  src: url("./assets/fonts/fusion-pixel-10px-proportional-zh_hant.otf.woff2")
+    format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }

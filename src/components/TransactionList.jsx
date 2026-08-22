@@ -15,7 +15,7 @@ function TransactionList({ transactions, categories, selectedCategoryFilter, onC
   return (
     <div className="pixel-card bg-surface overflow-hidden">
       <div className="p-4 sm:p-5 border-b-2 border-ink flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-base font-bold text-ink flex items-center gap-2">
+        <h3 className="text-lg font-bold text-ink flex items-center gap-2">
           支出明細列表
           {selectedCategoryFilter !== 'ALL' && (
             <span className="text-xs bg-accent border-2 border-ink text-ink px-2 py-0.5 rounded-pixel-sm flex items-center gap-1">
@@ -62,47 +62,42 @@ function TransactionList({ transactions, categories, selectedCategoryFilter, onC
         ) : (
           transactions.map((item, idx) => {
             const catColor = getCategoryColor(item.category);
-            const payerBadgeClass = getPayerStyle(item.payer, 'badge');
-            const paymentMethodBadgeClass = getPaymentMethodStyle(item.paymentMethod, 'badge');
             return (
-              <div key={item.id || idx} className="transaction-row relative p-4 pl-6 hover:bg-surface-warm transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div aria-hidden="true" className={`expense-indicator transaction-expense-indicator ${idx % 2 === 0 ? 'transaction-expense-indicator--coral' : 'transaction-expense-indicator--accent'} absolute inset-y-0 left-0`} />
-                <div className="flex items-start sm:items-center space-x-3.5 min-w-0">
-                  <div className="min-w-0">
-                    <div className="flex items-center flex-wrap gap-1.5">
-                      <span className="text-sm font-semibold text-ink break-words">{item.title}</span>
+              <div key={item.id || idx} className="transaction-row relative p-4 pl-6 hover:bg-surface-warm transition-colors flex flex-col gap-2">
+                <div aria-hidden="true" className="expense-indicator transaction-expense-indicator absolute inset-y-0 left-0" style={{ backgroundColor: catColor }} />
+                <div className="flex items-center justify-between gap-3 min-w-0">
+                  <div className="flex items-center flex-wrap gap-1.5 min-w-0">
+                    <span className="text-xl font-semibold text-ink break-words">{item.title}</span>
+                    <span className="transaction-category-name text-base font-semibold" style={{ color: catColor }}>
+                      {item.category || '其他'}
+                    </span>
+                  </div>
+                  <span className="text-xl text-muted tabular-nums whitespace-nowrap shrink-0">{item.date}</span>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 ml-0">
+                  <div className="text-xs text-muted flex items-center flex-wrap gap-x-2 gap-y-0.5 min-w-0">
                       {item.payer && (
-                        <span className={`!bg-surface-warm !border-ink-soft !text-ink-soft text-[10px] px-1.5 py-0.2 rounded-pixel-sm font-medium ${payerBadgeClass}`}>
+                        <span className={`pixel-border-sm text-base px-1.5 py-0.2 rounded-pixel-sm font-medium ${getPayerStyle(item.payer, 'button')}`}>
                           {item.payer}
                         </span>
                       )}
                       {item.paymentMethod && (
-                        <span className={`!bg-surface-warm !border-ink-soft !text-ink-soft text-[10px] px-1.5 py-0.2 rounded-pixel-sm font-medium ${paymentMethodBadgeClass}`}>
+                        <span className={`pixel-border-sm text-base px-1.5 py-0.2 rounded-pixel-sm font-medium ${getPaymentMethodStyle(item.paymentMethod, 'button')}`}>
                           {item.paymentMethod}
                         </span>
                       )}
-                    </div>
-                    <div className="text-xs text-muted mt-1 flex items-center flex-wrap gap-x-2 gap-y-0.5">
-                      <span className="tabular-nums">{item.date}</span>
-                      <span>•</span>
-                      <span className="transaction-category-name font-semibold" style={{ color: catColor }}>
-                        {item.category || '其他'}
-                      </span>
                       {item.note && (
                         <>
                           <span>•</span>
                           <span className="text-ink-soft italic break-all">{item.note}</span>
                         </>
                       )}
-                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between sm:justify-end space-x-4 ml-6 sm:ml-0">
-                  <div className="text-right">
-                    <div className="font-pixel text-pixel-lg text-ink tabular-nums break-words">
-                      - HK$ {(Number.isFinite(Number(item.amount)) ? Number(item.amount) : 0).toFixed(2)}
-                    </div>
+                <div className="flex items-center justify-end gap-3 shrink-0">
+                  <div className="font-pixel text-pixel-lg text-ink text-left tabular-nums break-words">
+                    - HK$ {(Number.isFinite(Number(item.amount)) ? Number(item.amount) : 0).toFixed(2)}
                   </div>
 
                   <div className="flex items-center space-x-1 border-l-2 border-ink/20 pl-3">
@@ -121,6 +116,7 @@ function TransactionList({ transactions, categories, selectedCategoryFilter, onC
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
+                </div>
                 </div>
               </div>
             );

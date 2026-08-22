@@ -62,7 +62,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
-            <label className="block text-xs font-medium text-muted mb-1">日期 (date)</label>
+            <label className="block text-xs font-medium text-muted mb-1">日期</label>
             <button
               type="button"
               onClick={() => setShowCalendar(prev => !prev)}
@@ -88,7 +88,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">金額 (amount)</label>
+            <label className="block text-xs font-medium text-muted mb-1">金額</label>
             <div className="pixel-border-sm relative p-0.5">
               <span className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted text-sm font-semibold">HK$</span>
               <input 
@@ -109,7 +109,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">類別 (category)</label>
+            <label className="block text-xs font-medium text-muted mb-1">類別</label>
             <div className="pixel-border-sm p-0.5">
               <select 
                 value={formData.category || (safeCategories[0]?.name || '其他')}
@@ -126,7 +126,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">項目標題 (title)</label>
+            <label className="block text-xs font-medium text-muted mb-1">項目標題</label>
             <div className="pixel-border-sm p-0.5">
               <input 
                 type="text"
@@ -144,7 +144,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">付款人 (payer)</label>
+            <label className="block text-xs font-medium text-muted mb-1">付款人</label>
             <div className="grid grid-cols-2 gap-2">
               {PAYERS.map(p => (
                 <button
@@ -164,7 +164,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">付款方式 (paymentMethod)</label>
+            <label className="block text-xs font-medium text-muted mb-1">付款方式</label>
             <div className="grid grid-cols-2 gap-2 mb-2">
               {PAYMENT_METHODS.map(pm => (
                 <button
@@ -202,7 +202,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">備註 (note)</label>
+            <label className="block text-xs font-medium text-muted mb-1">備註</label>
             <div className="pixel-border-sm p-0.5">
               <input 
                 type="text"

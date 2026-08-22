@@ -86,17 +86,17 @@ function RecurringModal({
 
         <h3 className="text-lg font-bold text-ink mb-2 flex items-center gap-2">
           <RefreshCw className="w-5 h-5 text-primary-dark" />
-          恆常固定支出 (Recurring Expenses)
+          恆常固定支出
         </h3>
         <p className="text-xs text-muted mb-4">
-          設定每月扣款日 (`dayOfMonth`)，GAS 每日排程自動產生交易至記帳本。
+          設定每月扣款日，每日排程自動產生交易至記帳本。
         </p>
 
         <form onSubmit={handleAddSubmit} className="bg-surface-warm border-2 border-ink p-4 rounded-pixel-sm space-y-4 mb-6">
           <div className="text-xs font-semibold text-primary-dark">新增恆常開支設定：</div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">項目標題 (title)</label>
+            <label className="block text-lg font-medium text-muted mb-1">項目標題</label>
             <div className="pixel-border-sm p-0.5">
               <input 
                 type="text"
@@ -115,7 +115,7 @@ function RecurringModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">金額 (amount)</label>
+            <label className="block text-lg font-medium text-muted mb-1">金額</label>
             <div className="pixel-border-sm relative p-0.5">
               <span className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted text-sm font-semibold">HK$</span>
               <input 
@@ -137,7 +137,7 @@ function RecurringModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">類別 (category)</label>
+            <label className="block text-lg font-medium text-muted mb-1">類別</label>
             <div className="pixel-border-sm p-0.5">
               <select 
                 value={newRec.category}
@@ -154,7 +154,7 @@ function RecurringModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">付款人 (payer)</label>
+            <label className="block text-lg font-medium text-muted mb-1">付款人</label>
             <div className="grid grid-cols-2 gap-2">
               {(PAYERS || []).map(p => (
                 <button
@@ -174,14 +174,14 @@ function RecurringModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">付款方式 (paymentMethod)</label>
+            <label className="block text-lg font-medium text-muted mb-1">付款方式</label>
             <div className="grid grid-cols-2 gap-2 mb-2">
               {(PAYMENT_METHODS || []).map(pm => (
                 <button
                   key={pm}
                   type="button"
                   onClick={() => setNewRec({ ...newRec, paymentMethod: pm, isCustomPayment: false })}
-                  className={`pixel-border-sm py-1.5 px-3 rounded-xl border text-xs font-medium transition ${
+                  className={`pixel-border-sm py-1.5 px-3 rounded-xl border text-[15.6px] font-medium transition ${
                     !newRec.isCustomPayment && newRec.paymentMethod === pm
                       ? getPaymentMethodStyle(pm, 'button')
                       : 'bg-surface-soft border-2 border-ink text-muted hover:bg-surface-warm'
@@ -212,7 +212,7 @@ function RecurringModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">每月扣款日 (dayOfMonth)</label>
+            <label className="block text-lg font-medium text-muted mb-1">每月扣款日</label>
             <div className="flex items-center gap-2">
               <div className="pixel-border-sm flex-1 p-0.5">
                 <input 
@@ -224,16 +224,16 @@ function RecurringModal({
                     setNewRec({ ...newRec, dayOfMonth: e.target.value });
                     setFieldErrors(prev => ({ ...prev, dayOfMonth: '' }));
                   }}
-                  className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-sm text-ink text-center focus:outline-none"
+                  className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-[21px] text-ink text-center focus:outline-none"
                 />
               </div>
-              <span className="text-xs text-muted shrink-0">號</span>
+              <span className="text-[21px] text-muted shrink-0">號</span>
             </div>
             {fieldErrors.dayOfMonth && <p className="text-[11px] text-danger mt-1">{fieldErrors.dayOfMonth}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">備註 (note)</label>
+            <label className="block text-lg font-medium text-muted mb-1">備註</label>
             <div className="pixel-border-sm p-0.5">
               <input 
                 type="text"

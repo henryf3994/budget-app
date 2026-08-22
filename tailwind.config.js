@@ -22,8 +22,6 @@ export default {
         "primary-dark": "#D96F61",
 
         accent: "#FAD02C",
-        "accent-dark": "#D9AE16",
-
         ink: "#2A2356",
         "ink-soft": "#554F70",
 
@@ -52,8 +50,7 @@ export default {
         ],
 
         pixel: [
-          '"Ark Pixel"',
-          '"Press Start 2P"',
+          '"Fusion Pixel"',
           "monospace",
         ],
       },

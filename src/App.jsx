@@ -379,7 +379,7 @@ export default function App() {
 
   // --- Render ---
   return (
-    <div className="min-h-screen relative bg-canvas text-ink font-sans p-3 sm:p-6 md:p-8 pb-28 overflow-x-hidden">
+    <div className={`min-h-screen relative bg-canvas text-ink ${activeTab === 'overview' || activeTab === 'transactions' ? 'overview-font' : 'font-sans'} p-3 sm:p-6 md:p-8 pb-28 overflow-x-hidden`}>
 
       <div className="max-w-6xl mx-auto space-y-6 relative">
 

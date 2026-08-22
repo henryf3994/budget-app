@@ -135,9 +135,9 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
     <div className="pixel-card p-5">
       {/* 標題 + 切換按鈕 */}
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-base font-semibold text-ink flex items-center gap-2">
+        <h2 className="text-lg font-semibold text-ink flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-primary-dark" />
-          <span>支出趨勢 (Expense Trend)</span>
+          <span>支出趨勢</span>
         </h2>
         <div className="flex items-center gap-1 rounded-pixel-sm border-2 border-ink bg-surface-warm p-1">
           <button

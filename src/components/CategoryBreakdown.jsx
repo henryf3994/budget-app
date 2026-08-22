@@ -60,7 +60,7 @@ function CategoryBreakdown({ breakdownData, selectedCategoryFilter, onCategoryFi
   return (
     <div className="pixel-card p-5">
       <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-base font-semibold text-ink">開支類別比例 <span className="text-muted font-medium text-sm">/ Category breakdown</span></h2>
+        <h2 className="text-lg font-semibold text-ink">開支類別比例</h2>
         <span className="text-xs text-muted">點擊分類可篩選明細</span>
       </div>
 

@@ -34,7 +34,7 @@ export default function HeaderBar({
   };
 
   return (
-    <header className="pixel-card flex flex-col gap-5 bg-surface-warm p-4 sm:p-5">
+    <header className="pixel-card border-4 shadow-pixel-lg flex flex-col gap-5 bg-surface-warm p-4 sm:p-5">
 
       {/* Top Row: Centered brand + actions docked top-right */}
       <div className="relative flex flex-col items-center gap-2 pt-1 sm:pt-2">
@@ -97,7 +97,6 @@ export default function HeaderBar({
               preserveAspectRatio="xMidYMid meet"
             />
           </svg>
-          <p className="text-[11px] tracking-[0.22em] uppercase font-semibold text-primary-dark -mt-2">Family finance</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">
             家庭記賬App
           </h1>

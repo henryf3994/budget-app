@@ -67,7 +67,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
-            <label className="block text-xs font-medium text-muted mb-1">日期 (date)</label>
+            <label className="block text-lg font-medium text-muted mb-1">日期</label>
             <button
               type="button"
               onClick={() => setShowCalendar(prev => !prev)}
@@ -93,7 +93,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">金額 (amount)</label>
+            <label className="block text-lg font-medium text-muted mb-1">金額</label>
             <div className="pixel-border-sm relative p-0.5">
               <span className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted text-sm font-semibold">HK$</span>
               <input 
@@ -115,7 +115,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">類別 (category)</label>
+            <label className="block text-lg font-medium text-muted mb-1">類別</label>
             <div className="pixel-border-sm p-0.5">
               <select 
                 value={formData.category}
@@ -132,7 +132,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">項目標題 (title)</label>
+            <label className="block text-lg font-medium text-muted mb-1">項目標題</label>
             <div className="pixel-border-sm p-0.5">
               <input 
                 type="text"
@@ -151,7 +151,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
 
             {currentCategoryTitles.length > 0 && (
               <div className="mt-2">
-                <span className="text-[11px] text-muted-warm block mb-1">快速選取熱門標題：</span>
+                <span className="text-[16.5px] text-muted-warm block mb-1">快速選取熱門標題：</span>
                 <div className="flex flex-wrap gap-1.5">
                   {currentCategoryTitles.map((t, idx) => (
                     <button
@@ -169,7 +169,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">付款人 (payer)</label>
+            <label className="block text-lg font-medium text-muted mb-1">付款人</label>
             <div className="grid grid-cols-2 gap-2">
               {PAYERS.map(p => (
                 <button
@@ -189,14 +189,14 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">付款方式 (paymentMethod)</label>
+            <label className="block text-lg font-medium text-muted mb-1">付款方式</label>
             <div className="grid grid-cols-2 gap-2 mb-2">
               {PAYMENT_METHODS.map(pm => (
                 <button
                   key={pm}
                   type="button"
                   onClick={() => setFormData({ ...formData, paymentMethod: pm, isCustomPayment: false })}
-                  className={`pixel-border-sm py-1.5 px-3 rounded-xl border text-xs font-medium transition ${
+                  className={`pixel-border-sm py-1.5 px-3 rounded-xl border text-[15.6px] font-medium transition ${
                     !formData.isCustomPayment && formData.paymentMethod === pm
                       ? getPaymentMethodStyle(pm, 'button')
                       : 'bg-surface-soft border-2 border-ink text-muted hover:bg-surface-warm'
@@ -227,7 +227,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">備註 (note)</label>
+            <label className="block text-lg font-medium text-muted mb-1">備註</label>
             <div className="pixel-border-sm p-0.5">
               <input 
                 type="text"
