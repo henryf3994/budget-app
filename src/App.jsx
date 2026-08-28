@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Plus, RefreshCw, Settings, Database, Calendar, ChevronLeft, ChevronRight,
   Trash2, Edit3, X, Check, CreditCard, DollarSign, User, Tag, FileText,
@@ -10,18 +10,37 @@ import SummaryCards from './components/SummaryCards';
 import CategoryBreakdown from './components/CategoryBreakdown';
 import ExpenseTrendChart from './components/ExpenseTrendChart';
 import TransactionList from './components/TransactionList';
+import SettingsPage from './components/SettingsPage';
 import UrlModal from './components/modals/UrlModal';
 import CategoryModal from './components/modals/CategoryModal';
 import RecurringModal from './components/modals/RecurringModal';
 import AddTransactionModal from './components/modals/AddTransactionModal';
 import EditTransactionModal from './components/modals/EditTransactionModal';
+import appBackground from './assets/background.png';
 import { INITIAL_CATEGORIES } from './utils/constants.js';
 import { ensureValidCategories, isValidUrl, normalizePaymentMethod, sanitizeRecurring, sanitizeText, sanitizeTransaction, validateRecurringForm, validateTransactionForm } from './utils/validation.js';
+import { safeGetItem, safeSetItem } from './utils/storage.js';
+
+// 修復 1：統一的 GAS 請求輔助函數。
+// fetch 在收到 4xx/5xx 時「不會」拋錯，必須自行檢查 res.ok；
+// 且 GAS 出錯時常回傳 HTML 錯誤頁，需確保回應可解析為 JSON。
+const fetchJson = async (url, options = {}) => {
+  const res = await fetch(url, options);
+  if (!res.ok) {
+    throw new Error(`伺服器回應異常（HTTP ${res.status}）`);
+  }
+  try {
+    return await res.json();
+  } catch {
+    throw new Error('伺服器回傳非 JSON 內容，請確認 GAS URL 是否正確');
+  }
+};
 
 export default function App() {
   // --- Global States ---
   const [activeTab, setActiveTab] = useState('overview');
-  const [gasUrl, setGasUrl] = useState(() => localStorage.getItem('gas_app_url') || '');
+  // 修復 9：以 safeGetItem 包裝，儲存空間被封鎖時不再於啟動時當機
+  const [gasUrl, setGasUrl] = useState(() => safeGetItem('gas_app_url', ''));
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
 
@@ -29,7 +48,8 @@ export default function App() {
   const [recurringExpenses, setRecurringExpenses] = useState([]);
   const [categories, setCategories] = useState(() => {
     try {
-      const saved = localStorage.getItem('app_categories');
+      // 修復 9：以 safeGetItem 包裝，儲存空間被封鎖時回傳 fallback
+      const saved = safeGetItem('app_categories', '');
       if (!saved) return INITIAL_CATEGORIES;
       return ensureValidCategories(JSON.parse(saved));
     } catch {
@@ -51,13 +71,51 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('ALL');
 
+  // 修復 3：請求序號與 AbortController，用於丟棄過期回應、取消過時的載入請求（race condition 防護）
+  const loadRequestIdRef = useRef(0);
+  const loadAbortRef = useRef(null);
+
+  // 修復 10：防止 React StrictMode（開發模式）重複觸發初始載入
+  const hasInitialLoadRef = useRef(false);
+  // 修復 11：狀態訊息自動隱藏計時器
+  const statusTimeoutRef = useRef(null);
+
+  // 修復 11：統一管理狀態訊息——顯示新訊息前先清除舊計時器，
+  // 避免較早的 setTimeout 把較新的訊息清掉；autoHideMs > 0 時才自動隱藏
+  const showStatus = (type, text, autoHideMs = 0) => {
+    if (statusTimeoutRef.current) {
+      clearTimeout(statusTimeoutRef.current);
+      statusTimeoutRef.current = null;
+    }
+    setStatusMsg({ type, text });
+    if (autoHideMs > 0) {
+      statusTimeoutRef.current = setTimeout(() => {
+        statusTimeoutRef.current = null;
+        setStatusMsg({ type: '', text: '' });
+      }, autoHideMs);
+    }
+  };
+
   useEffect(() => {
-    localStorage.setItem('app_categories', JSON.stringify(categories));
+    // 修復 9：以 safeSetItem 包裝，儲存空間被封鎖時不再於 effect 內拋錯當機
+    if (!safeSetItem('app_categories', JSON.stringify(categories))) {
+      console.warn('無法寫入 localStorage（app_categories），類別設定可能不會被保存');
+    }
   }, [categories]);
 
   useEffect(() => {
+    // 修復 10：StrictMode 下初始 effect 會被執行兩次，以 ref 確保只載入一次
+    if (hasInitialLoadRef.current) return;
+    hasInitialLoadRef.current = true;
     if (gasUrl) {
       loadDataFromGAS(gasUrl);
+    }
+  }, []);
+
+  // 修復 11：元件卸載時清理計時器
+  useEffect(() => () => {
+    if (statusTimeoutRef.current) {
+      clearTimeout(statusTimeoutRef.current);
     }
   }, []);
 
@@ -67,11 +125,24 @@ export default function App() {
       setShowUrlModal(true);
       return;
     }
+
+    // 修復 3：取消前一筆仍在進行的載入並遞增請求序號，較舊的回應會直接被丟棄，
+    // 避免過期資料覆蓋較新的狀態（race condition 防護）
+    if (loadAbortRef.current) {
+      loadAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
+    const requestId = ++loadRequestIdRef.current;
+
     setLoading(true);
-    setStatusMsg({ type: 'info', text: '正在連線至 Google Sheets 讀取數據...' });
+    showStatus('info', '正在連線至 Google Sheets 讀取數據...');
     try {
-      const res = await fetch(url);
-      const json = await res.json();
+      // 修復 1：改用 fetchJson 統一檢查 HTTP 狀態碼並確保回應為 JSON
+      const json = await fetchJson(url, { signal: controller.signal });
+
+      // 修復 3：若期間已有較新的請求或樂觀更新，丟棄此過期回應
+      if (requestId !== loadRequestIdRef.current) return;
 
       if (json.status === 'success') {
         // 修復重點 1：正確解構 GAS 回傳的 data 物件，確保必定為陣列
@@ -93,37 +164,54 @@ export default function App() {
         setTransactions(fetchedTransactions.map(sanitizeTransaction).filter(Boolean));
         setRecurringExpenses(fetchedRecurring.map(sanitizeRecurring).filter(Boolean));
 
-        setStatusMsg({ type: 'success', text: '數據同步成功！' });
-        setTimeout(() => setStatusMsg({ type: '', text: '' }), 3000);
+        showStatus('success', '數據同步成功！', 3000);
       } else {
         throw new Error(json.message || '無法取得數據');
       }
     } catch (err) {
+      // 修復 3：此請求已被較新的請求取代（abort），不需任何處理
+      if (err?.name === 'AbortError') return;
       console.error(err);
-      setStatusMsg({ type: 'error', text: '同步失敗: ' + err.message });
-      // 防止失敗時 state 變為 undefined 造成後續 filter 崩潰
-      setTransactions([]);
-      setRecurringExpenses([]);
+      showStatus('error', '同步失敗: ' + (err?.message || '未知錯誤'));
+      // 修復 1：同步失敗時保留畫面上現有的數據（不再清空），
+      // 避免暫時性網路錯誤讓使用者以為所有資料都消失了
     } finally {
-      setLoading(false);
+      // 修復 3：只有「最新」的請求可以關閉 loading，避免舊請求提前關閉新請求的載入狀態
+      if (requestId === loadRequestIdRef.current) {
+        loadAbortRef.current = null;
+        setLoading(false);
+      }
     }
   };
 
   const handleSaveUrl = (url) => {
     const normalizedUrl = sanitizeText(url);
     if (!normalizedUrl) {
-      setStatusMsg({ type: 'error', text: '請先輸入 GAS URL' });
+      showStatus('error', '請先輸入 GAS URL');
       return;
     }
     if (!isValidUrl(normalizedUrl)) {
-      setStatusMsg({ type: 'error', text: '請輸入有效的 URL（需以 http:// 或 https:// 開頭）' });
+      // 修復 4：財務資料端點一律要求 https，避免資料以明文傳輸
+      showStatus('error', '請輸入有效的網址（需以 https:// 開頭）');
       return;
     }
 
     setGasUrl(normalizedUrl);
-    localStorage.setItem('gas_app_url', normalizedUrl);
+    // 修復 9：以 safeSetItem 包裝，儲存空間被封鎖時不再拋錯
+    if (!safeSetItem('gas_app_url', normalizedUrl)) {
+      console.warn('無法寫入 localStorage（gas_app_url），網址將不會在下次開啟時保留');
+    }
     setShowUrlModal(false);
     loadDataFromGAS(normalizedUrl);
+  };
+
+  // 修復 2：更新失敗時還原單筆交易（previous 為修改前的原資料；找不到原資料時則移除該列）
+  const rollbackTransactionUpdate = (id, previous) => {
+    setTransactions(prev => {
+      if (!Array.isArray(prev)) return [];
+      if (!previous) return prev.filter(t => t?.id !== id);
+      return prev.map(t => (t?.id === id ? previous : t));
+    });
   };
 
   const handleAddTransaction = async (formData) => {
@@ -141,16 +229,24 @@ export default function App() {
       amount: Number(formData.amount)
     };
 
+    // 修復 3：使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
+    loadRequestIdRef.current += 1;
+
     const tempId = 'temp_' + Date.now();
     setTransactions(prev => [{ ...payload, id: tempId }, ...(Array.isArray(prev) ? prev : [])]);
     setShowAddModal(false);
 
+    // 修復 5：尚未設定同步網址時明確警告，避免使用者以為資料已保存
+    if (!gasUrl) {
+      showStatus('error', '尚未設定 GAS URL！此記錄只會暫存於畫面，重新整理後將消失。請由右上角「⋯」選單設定同步網址。');
+      return;
+    }
+
     if (gasUrl) {
       setLoading(true);
       try {
-        const res = await fetch(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload), redirect: 'follow' });
-        const resJson = await res.json();
-        if (resJson.status === 'success') loadDataFromGAS();
+        const resJson = await fetchJson(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload), redirect: 'follow' });
+        if (resJson.status === 'success') await loadDataFromGAS();
         else {
           alert('寫入失敗：' + resJson.message);
           // 回滾樂觀更新
@@ -186,18 +282,35 @@ export default function App() {
       amount: Number(formData.amount)
     };
 
+    // 修復 2：先記住原資料，更新失敗時用於回滾，避免畫面與伺服器資料不同步
+    const previous = (Array.isArray(transactions) ? transactions : []).find(t => t?.id === payload.id);
+
+    // 修復 3：使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
+    loadRequestIdRef.current += 1;
+
     setTransactions(prev => (Array.isArray(prev) ? prev : []).map(t => t.id === payload.id ? payload : t));
     setEditingTransaction(null);
+
+    // 修復 5：尚未設定同步網址時明確警告，避免使用者以為修改已保存
+    if (!gasUrl) {
+      showStatus('error', '尚未設定 GAS URL！此修改只會暫存於畫面，重新整理後將消失。請由右上角「⋯」選單設定同步網址。');
+      return;
+    }
 
     if (gasUrl) {
       setLoading(true);
       try {
-        const res = await fetch(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload), redirect: 'follow' });
-        const resJson = await res.json();
-        if (resJson.status === 'success') loadDataFromGAS();
-        else alert('更新失敗：' + resJson.message);
+        const resJson = await fetchJson(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload), redirect: 'follow' });
+        if (resJson.status === 'success') await loadDataFromGAS();
+        else {
+          alert('更新失敗：' + resJson.message);
+          // 修復 2：回滾樂觀更新，還原為修改前的資料
+          rollbackTransactionUpdate(payload.id, previous);
+        }
       } catch (err) {
         alert('更新請求失敗：' + err.message);
+        // 修復 2：回滾樂觀更新，還原為修改前的資料
+        rollbackTransactionUpdate(payload.id, previous);
       } finally {
         setLoading(false);
       }
@@ -206,15 +319,18 @@ export default function App() {
 
   const handleDeleteTransaction = async (id) => {
     if (!window.confirm('確定要刪除這筆支出紀錄嗎？')) return;
+
+    // 修復 3：使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
+    loadRequestIdRef.current += 1;
+
     setTransactions(prev => (Array.isArray(prev) ? prev : []).filter(t => t.id !== id));
     if (gasUrl) {
       setLoading(true);
       try {
-        const res = await fetch(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteTransaction', id: id }), redirect: 'follow' });
-        const resJson = await res.json();
-        if (resJson.status !== 'success') { alert('刪除失敗：' + resJson.message); loadDataFromGAS(); }
+        const resJson = await fetchJson(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteTransaction', id: id }), redirect: 'follow' });
+        if (resJson.status !== 'success') { alert('刪除失敗：' + resJson.message); await loadDataFromGAS(); }
       } catch (err) {
-        alert('刪除請求失敗：' + err.message); loadDataFromGAS();
+        alert('刪除請求失敗：' + err.message); await loadDataFromGAS();
       } finally {
         setLoading(false);
       }
@@ -239,15 +355,23 @@ export default function App() {
       dayOfMonth: safeDayOfMonth
     };
 
+    // 修復 3：使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
+    loadRequestIdRef.current += 1;
+
     const tempId = 'rec_' + Date.now();
     setRecurringExpenses(prev => [...(Array.isArray(prev) ? prev : []), { ...payload, id: tempId }]);
+
+    // 修復 5：尚未設定同步網址時明確警告，避免使用者以為資料已保存
+    if (!gasUrl) {
+      showStatus('error', '尚未設定 GAS URL！此恆常開支只會暫存於畫面，重新整理後將消失。請由右上角「⋯」選單設定同步網址。');
+      return;
+    }
 
     if (gasUrl) {
       setLoading(true);
       try {
-        const res = await fetch(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload), redirect: 'follow' });
-        const resJson = await res.json();
-        if (resJson.status === 'success') loadDataFromGAS();
+        const resJson = await fetchJson(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload), redirect: 'follow' });
+        if (resJson.status === 'success') await loadDataFromGAS();
         else {
           alert('恆常開支寫入失敗：' + resJson.message);
           // 回滾樂觀更新
@@ -265,15 +389,18 @@ export default function App() {
 
   const handleDeleteRecurring = async (id) => {
     if (!window.confirm('確定要刪除這筆恆常開支嗎？')) return;
+
+    // 修復 3：使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
+    loadRequestIdRef.current += 1;
+
     setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).filter(r => r.id !== id));
     if (gasUrl) {
       setLoading(true);
       try {
-        const res = await fetch(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteRecurring', id: id }), redirect: 'follow' });
-        const resJson = await res.json();
-        if (resJson.status !== 'success') { alert('刪除失敗：' + resJson.message); loadDataFromGAS(); }
+        const resJson = await fetchJson(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteRecurring', id: id }), redirect: 'follow' });
+        if (resJson.status !== 'success') { alert('刪除失敗：' + resJson.message); await loadDataFromGAS(); }
       } catch (err) {
-        alert('刪除請求失敗：' + err.message); loadDataFromGAS();
+        alert('刪除請求失敗：' + err.message); await loadDataFromGAS();
       } finally {
         setLoading(false);
       }
@@ -282,18 +409,57 @@ export default function App() {
 
   const handleAddCategory = (newCat) => setCategories(prev => [...prev, newCat]);
 
-  const handleDeleteCategory = (catId) => {
+  const handleDeleteCategory = async (catId) => {
     if (categories.length <= 1) return alert('最少需保留一個類別！');
     const catToDelete = categories.find(c => c.id === catId);
     if (!catToDelete) return;
 
+    const remainingCategories = categories.filter(c => c.id !== catId);
+    // 歸入目標：優先使用名為「其他」的剩餘類別；若刪除的正是「其他」，退回第一個剩餘類別
+    const fallbackName = remainingCategories.find(c => c.name === '其他')?.name || remainingCategories[0]?.name || '其他';
+
     // 檢查是否有交易引用此類別
-    const relatedCount = (Array.isArray(transactions) ? transactions : []).filter(t => t?.category === catToDelete.name).length;
-    if (relatedCount > 0) {
-      const confirmed = window.confirm(`此類別「${catToDelete.name}」有 ${relatedCount} 筆交易紀錄，刪除後將歸入「其他」類別。確定要刪除嗎？`);
+    const affectedTransactions = (Array.isArray(transactions) ? transactions : []).filter(t => t?.category === catToDelete.name);
+    if (affectedTransactions.length > 0) {
+      const confirmed = window.confirm(`此類別「${catToDelete.name}」有 ${affectedTransactions.length} 筆交易紀錄，刪除後將歸入「${fallbackName}」類別。確定要刪除嗎？`);
       if (!confirmed) return;
     }
-    setCategories(prev => prev.filter(c => c.id !== catId));
+
+    setCategories(remainingCategories);
+
+    if (affectedTransactions.length === 0) return;
+
+    // 修復 6：確實將引用此類別的交易／恆常開支歸入目標類別，
+    // 使「開支類別比例」與明細篩選一致（原本只刪類別、未改資料，兩邊數字會對不上）
+    // （修復 3 同款防護：先使進行中的載入回應失效，避免舊資料蓋掉重新歸類結果）
+    loadRequestIdRef.current += 1;
+
+    setTransactions(prev => (Array.isArray(prev) ? prev : []).map(t => t?.category === catToDelete.name ? { ...t, category: fallbackName } : t));
+    setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).map(r => r?.category === catToDelete.name ? { ...r, category: fallbackName } : r));
+
+    if (!gasUrl) {
+      showStatus('error', '尚未設定 GAS URL！類別重新歸類只會暫存於畫面，重新整理後將還原。');
+      return;
+    }
+
+    // 將類別變更逐筆同步回試算表（editTransaction），避免下次同步時被還原
+    setLoading(true);
+    try {
+      const results = await Promise.allSettled(affectedTransactions.map(t =>
+        fetchJson(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editTransaction', ...t, category: fallbackName }), redirect: 'follow' })
+      ));
+      const failedCount = results.filter(r => r.status === 'rejected' || r.value?.status !== 'success').length;
+      await loadDataFromGAS();
+      if (failedCount > 0) {
+        showStatus('error', `類別刪除完成，但有 ${failedCount} 筆交易的新類別未能同步至試算表，下次同步時可能還原。`);
+      }
+    } catch (err) {
+      // Promise.allSettled 與 loadDataFromGAS 正常都不會拋錯，此 catch 僅防禦性保留
+      console.error(err);
+      await loadDataFromGAS();
+    } finally {
+      setLoading(false);
+    }
   };
 
   // --- 安全資料計算 ---
@@ -379,7 +545,15 @@ export default function App() {
 
   // --- Render ---
   return (
-    <div className={`min-h-screen relative bg-canvas text-ink ${activeTab === 'overview' || activeTab === 'transactions' ? 'overview-font' : 'font-sans'} p-3 sm:p-6 md:p-8 pb-28 overflow-x-hidden`}>
+    <div
+      className={`min-h-screen relative bg-canvas text-ink ${activeTab === 'overview' || activeTab === 'transactions' || activeTab === 'settings' ? 'overview-font' : 'font-sans'} p-3 sm:p-6 md:p-8 pb-28 overflow-x-hidden`}
+      style={{
+        backgroundImage: `url(${appBackground})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
 
       <div className="max-w-6xl mx-auto space-y-6 relative">
 
@@ -391,9 +565,6 @@ export default function App() {
           currentMonth={currentMonth}
           onPrevMonth={() => currentMonth === 1 ? (setCurrentYear(y => y - 1), setCurrentMonth(12)) : setCurrentMonth(m => m - 1)}
           onNextMonth={() => currentMonth === 12 ? (setCurrentYear(y => y + 1), setCurrentMonth(1)) : setCurrentMonth(m => m + 1)}
-          onRefresh={() => loadDataFromGAS()}
-          onOpenUrlModal={() => setShowUrlModal(true)}
-          onOpenCategoryModal={() => setShowCategoryModal(true)}
           onSelectDate={(year, month) => {
             setCurrentYear(year);
             setCurrentMonth(month);
@@ -466,6 +637,16 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === 'settings' && (
+          <SettingsPage
+            gasUrl={gasUrl}
+            loading={loading}
+            onRefresh={() => loadDataFromGAS()}
+            onOpenUrlModal={() => setShowUrlModal(true)}
+            onOpenCategoryModal={() => setShowCategoryModal(true)}
+          />
+        )}
+
       </div>
 
       {/* Floating Bottom Navigation */}
@@ -491,6 +672,17 @@ export default function App() {
         >
           <List className="w-5 h-5" />
           <span className="hidden sm:inline">支帳明細</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
+            activeTab === 'settings'
+              ? 'bg-accent text-ink shadow-pixel-sm'
+              : 'text-ink-soft hover:text-ink hover:bg-surface-warm'
+          }`}
+        >
+          <Settings className="w-5 h-5" />
+          <span className="hidden sm:inline">設定</span>
         </button>
       </nav>
 

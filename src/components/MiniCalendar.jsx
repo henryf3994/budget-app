@@ -2,16 +2,27 @@ import React, { useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useOnClickOutside } from '../hooks/useOnClickOutside.js';
 import { getLocalDateString } from '../utils/constants.js';
+import { isValidDate } from '../utils/validation.js';
 
 // =========================================================================
 // 📁 src/components/MiniCalendar.jsx
 // Mini calendar popup for date selection
 // =========================================================================
-function MiniCalendar({ selectedDate, onSelect, onClose }) {
-  const [viewDate, setViewDate] = useState(() => {
-    const [y, m] = selectedDate.split('-').map(Number);
+
+// 修復 7：selectedDate 為空字串或格式無效時（例如同步資料的日期不合法），
+// 退回「今天所在月份」，避免 new Date(NaN, ...) 顯示「NaN年 NaN月」且日曆空白
+const getInitialViewDate = (selectedDate) => {
+  const str = String(selectedDate || '').slice(0, 10);
+  if (isValidDate(str)) {
+    const [y, m] = str.split('-').map(Number);
     return new Date(y, m - 1, 1);
-  });
+  }
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+};
+
+function MiniCalendar({ selectedDate, onSelect, onClose }) {
+  const [viewDate, setViewDate] = useState(() => getInitialViewDate(selectedDate));
 
   const calendarRef = useRef(null);
   useOnClickOutside(calendarRef, onClose);

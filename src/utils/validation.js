@@ -43,12 +43,16 @@ export const isValidDate = (value) => {
 };
 
 // 驗證並修復單筆交易資料結構，確保欄位安全
+// 修復 12：日期無效或金額非正數的資料視為無效（回傳 null），由呼叫端過濾，
+// 避免產生「空白日期／0 元」的幽靈列
 export const sanitizeTransaction = (t) => {
   if (!t || typeof t !== 'object') return null;
+  const amount = Number(t.amount);
+  if (!isValidDate(t.date) || !Number.isFinite(amount) || amount <= 0) return null;
   return {
     id: t.id || 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-    date: isValidDate(t.date) ? String(t.date).slice(0, 10) : '',
-    amount: Number.isFinite(Number(t.amount)) && Number(t.amount) > 0 ? Number(t.amount) : 0,
+    date: String(t.date).slice(0, 10),
+    amount,
     category: sanitizeText(t.category) || '其他',
     title: sanitizeText(t.title) || '未命名支出',
     payer: sanitizeText(t.payer),
@@ -135,12 +139,13 @@ export const normalizePaymentMethod = (formData) => {
 };
 
 // 驗證 URL 是否為合法的 HTTPS URL
+// 修復 4：僅允許 https——財務資料端點不應以明文 http 傳輸
 export const isValidUrl = (value) => {
   const str = sanitizeText(value);
   if (!str) return false;
   try {
     const url = new URL(str);
-    return url.protocol === 'https:' || url.protocol === 'http:';
+    return url.protocol === 'https:';
   } catch {
     return false;
   }
