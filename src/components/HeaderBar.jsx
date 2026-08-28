@@ -60,7 +60,7 @@ export default function HeaderBar({
             <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
           </button>
 
-          {/* 修復 8：將切換按鈕與彈出曆包進同一個 ref 容器。原本 ref 只包住彈出曆，
+          {/* 將切換按鈕與彈出曆包進同一個 ref 容器。原本 ref 只包住彈出曆，
               點擊切換按鈕時會先被 onClickOutside 關閉、又被 toggle 重新開啟，
               導致彈出曆永遠無法用按鈕關閉 */}
           <div ref={pickerRef} className="relative">

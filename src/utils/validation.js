@@ -43,7 +43,7 @@ export const isValidDate = (value) => {
 };
 
 // 驗證並修復單筆交易資料結構，確保欄位安全
-// 修復 12：日期無效或金額非正數的資料視為無效（回傳 null），由呼叫端過濾，
+// 日期無效或金額非正數的資料視為無效（回傳 null），由呼叫端過濾，
 // 避免產生「空白日期／0 元」的幽靈列
 export const sanitizeTransaction = (t) => {
   if (!t || typeof t !== 'object') return null;
@@ -139,7 +139,7 @@ export const normalizePaymentMethod = (formData) => {
 };
 
 // 驗證 URL 是否為合法的 HTTPS URL
-// 修復 4：僅允許 https——財務資料端點不應以明文 http 傳輸
+// 僅允許 https——財務資料端點不應以明文 http 傳輸
 export const isValidUrl = (value) => {
   const str = sanitizeText(value);
   if (!str) return false;

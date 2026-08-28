@@ -9,7 +9,7 @@ import { isValidDate } from '../utils/validation.js';
 // Mini calendar popup for date selection
 // =========================================================================
 
-// 修復 7：selectedDate 為空字串或格式無效時（例如同步資料的日期不合法），
+// selectedDate 為空字串或格式無效時（例如同步資料的日期不合法），
 // 退回「今天所在月份」，避免 new Date(NaN, ...) 顯示「NaN年 NaN月」且日曆空白
 const getInitialViewDate = (selectedDate) => {
   const str = String(selectedDate || '').slice(0, 10);
