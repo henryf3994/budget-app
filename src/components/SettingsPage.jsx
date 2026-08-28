@@ -13,31 +13,64 @@ export default function SettingsPage({ gasUrl, loading, onRefresh, onOpenUrlModa
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <button
             onClick={onRefresh}
             disabled={loading}
-            className="pixel-button-primary flex min-h-28 flex-col items-center justify-center gap-2 px-4 py-4 text-center disabled:cursor-not-allowed disabled:opacity-60"
+            className="pixel-card relative flex min-h-28 flex-col overflow-hidden p-5 text-left transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <RefreshCw className={`h-6 w-6 ${loading ? 'animate-spin' : ''}`} />
-            <span>{loading ? '重新整理中…' : '重新整理數據'}</span>
+            <div className="absolute top-0 left-0 w-2 h-full bg-[var(--color-secondary)]"></div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="font-pixel text-base font-semibold text-ink-soft tracking-wider uppercase mb-1 md:text-lg">
+                {loading ? '重新整理中…' : '重新整理數據'}
+              </span>
+              <span className="inline-flex items-center justify-center p-2 rounded-pixel-sm bg-orange-50 border-2 border-primary text-primary">
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </span>
+            </div>
+            <div className="font-pixel mt-3 text-sm text-muted">
+              同步最新記賬資料
+            </div>
           </button>
 
           <button
             onClick={onOpenUrlModal}
-            className="pixel-button-accent flex min-h-28 flex-col items-center justify-center gap-2 px-4 py-4 text-center"
+            className="pixel-card relative flex min-h-28 flex-col overflow-hidden p-5 text-left transition-transform hover:-translate-y-0.5"
           >
-            <Database className="h-6 w-6" />
-            <span>設定 GAS API URL</span>
-            <span className="max-w-full truncate text-xs font-normal opacity-75">{gasUrl || '尚未設定'}</span>
+            <div className="absolute top-0 left-0 w-2 h-full bg-[var(--color-secondary)]"></div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="font-pixel text-base font-semibold text-ink-soft tracking-wider uppercase mb-1 md:text-lg">
+                設定 GAS API URL
+              </span>
+              <span className="inline-flex items-center justify-center p-2 rounded-pixel-sm bg-yellow-50 border-2 border-accent text-accent">
+                <Database className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="font-pixel mt-3 text-sm text-muted">
+              {gasUrl ? (
+                <span className="block max-w-full truncate" title={gasUrl}>{gasUrl}</span>
+              ) : (
+                '尚未設定'
+              )}
+            </div>
           </button>
 
           <button
             onClick={onOpenCategoryModal}
-            className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-pixel-sm border-2 border-ink bg-surface px-4 py-4 text-center font-bold text-ink shadow-pixel-sm transition hover:bg-surface-warm"
+            className="pixel-card relative flex min-h-28 flex-col overflow-hidden p-5 text-left transition-transform hover:-translate-y-0.5"
           >
-            <Settings className="h-6 w-6 text-accent-dark" />
-            <span>管理類別與顏色</span>
+            <div className="absolute top-0 left-0 w-2 h-full bg-[var(--color-secondary)]"></div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="font-pixel text-base font-semibold text-ink-soft tracking-wider uppercase mb-1 md:text-lg">
+                管理類別與顏色
+              </span>
+              <span className="inline-flex items-center justify-center p-2 rounded-pixel-sm bg-teal-50 border-2 border-secondary text-secondary">
+                <Settings className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="font-pixel mt-3 text-sm text-muted">
+              新增/編輯分類與快速標題
+            </div>
           </button>
         </div>
       </div>

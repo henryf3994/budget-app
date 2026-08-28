@@ -21,7 +21,12 @@ export default {
         primary: "#F28C77",
         "primary-dark": "#D96F61",
 
+        secondary: "#6FB7B2",
+        "secondary-dark": "#4E9692",
+
         accent: "#FAD02C",
+        "accent-dark": "#D9AE16",
+
         ink: "#2A2356",
         "ink-soft": "#554F70",
 

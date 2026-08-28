@@ -659,7 +659,7 @@ export default function App() {
           onClick={() => setActiveTab('settings')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
             activeTab === 'settings'
-              ? 'bg-accent text-ink shadow-pixel-sm'
+              ? 'bg-[var(--color-secondary-dark)] text-white shadow-pixel-sm'
               : 'text-ink-soft hover:text-ink hover:bg-surface-warm'
           }`}
         >
