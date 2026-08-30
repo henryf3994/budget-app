@@ -17,7 +17,7 @@ function SummaryCards({ totalExpense, transactionCount, totalRecurringExpense, r
         </div>
         <div className="pixel-number font-pixel text-[28px] font-normal text-ink tracking-tight tabular-nums">
           <span className="font-pixel">HK$</span>{' '}
-          {totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {totalExpense.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
         </div>
         <div className="font-pixel mt-3 text-sm text-muted flex items-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-success"></span>

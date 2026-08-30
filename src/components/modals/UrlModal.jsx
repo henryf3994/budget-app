@@ -1,20 +1,22 @@
-
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { X, Database } from 'lucide-react';
+import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
 
 // =========================================================================
 // 📁 src/components/modals/UrlModal.jsx
 // =========================================================================
 function UrlModal({ initialUrl, onClose, onSave }) {
   const [url, setUrl] = useState(initialUrl);
+  const modalRef = useRef(null);
+  useOnClickOutside(modalRef, onClose);
 
   const handleSave = () => {
-    onSave(url);
+    onSave(url.trim());
   };
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="url-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative">
+      <div ref={modalRef} className="url-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative">
         <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-ink">
           <X className="w-5 h-5" />
         </button>
@@ -28,7 +30,7 @@ function UrlModal({ initialUrl, onClose, onSave }) {
         </p>
 
         <div className="pixel-border-sm p-0.5 mb-4">
-          <input 
+          <input
             type="text"
             placeholder="https://script.google.com/macros/s/.../exec"
             value={url}
@@ -37,7 +39,7 @@ function UrlModal({ initialUrl, onClose, onSave }) {
           />
         </div>
 
-        <button 
+        <button
           onClick={handleSave}
           className="pixel-button-primary w-full py-2"
         >

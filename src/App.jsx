@@ -6,6 +6,7 @@ import SummaryCards from './components/SummaryCards';
 import CategoryBreakdown from './components/CategoryBreakdown';
 import ExpenseTrendChart from './components/ExpenseTrendChart';
 import TransactionList from './components/TransactionList';
+import RecurringExpenseList from './components/RecurringExpenseList';
 import SettingsPage from './components/SettingsPage';
 import UrlModal from './components/modals/UrlModal';
 import CategoryModal from './components/modals/CategoryModal';
@@ -13,7 +14,7 @@ import RecurringModal from './components/modals/RecurringModal';
 import AddTransactionModal from './components/modals/AddTransactionModal';
 import EditTransactionModal from './components/modals/EditTransactionModal';
 import appBackground from './assets/background.png';
-import { INITIAL_CATEGORIES } from './utils/constants.js';
+import { INITIAL_CATEGORIES, CATEGORY_FILTER_ALL } from './utils/constants.js';
 import { ensureValidCategories, isValidUrl, normalizePaymentMethod, sanitizeRecurring, sanitizeText, sanitizeTransaction, validateRecurringForm, validateTransactionForm } from './utils/validation.js';
 import { safeGetItem, safeSetItem } from './utils/storage.js';
 import { fetchJson, postToGAS } from './utils/gasApi.js';
@@ -46,12 +47,17 @@ export default function App() {
   const [showUrlModal, setShowUrlModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRecurringModal, setShowRecurringModal] = useState(false);
+  const [editingRecurring, setEditingRecurring] = useState(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
 
   // --- Filter States ---
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('ALL');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState(CATEGORY_FILTER_ALL);
+
+  // 恆常開支列表專用的篩選／搜尋狀態，與交易明細的篩選各自獨立
+  const [recurringSearchQuery, setRecurringSearchQuery] = useState('');
+  const [recurringSelectedCategoryFilter, setRecurringSelectedCategoryFilter] = useState(CATEGORY_FILTER_ALL);
 
   // 請求序號與 AbortController，用於丟棄過期回應、取消過時的載入請求（race condition 防護）
   const loadRequestIdRef = useRef(0);
@@ -383,6 +389,62 @@ export default function App() {
     }
   };
 
+  const handleUpdateRecurring = async (formData) => {
+    const validationError = validateRecurringForm(formData);
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
+
+    if (!formData?.id) {
+      alert('無法更新：缺少恆常開支 ID');
+      return;
+    }
+
+    const dayOfMonth = parseInt(formData.dayOfMonth, 10);
+    const safeDayOfMonth = Number.isNaN(dayOfMonth) ? 1 : dayOfMonth;
+    const payload = {
+      action: 'editRecurring',
+      ...formData,
+      title: sanitizeText(formData.title),
+      paymentMethod: normalizePaymentMethod(formData),
+      amount: Number(formData.amount),
+      dayOfMonth: safeDayOfMonth
+    };
+
+    // 先記住原資料，更新失敗時用於回滾
+    const previous = (Array.isArray(recurringExpenses) ? recurringExpenses : []).find(r => r?.id === payload.id);
+
+    // 使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
+    loadRequestIdRef.current += 1;
+
+    setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).map(r => r.id === payload.id ? payload : r));
+    setEditingRecurring(null);
+
+    // 尚未設定同步網址時明確警告，避免使用者以為修改已保存
+    if (!gasUrl) {
+      showStatus('error', '尚未設定 GAS URL！此修改只會暫存於畫面，重新整理後將消失。請由右上角「⋯」選單設定同步網址。');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const resJson = await postToGAS(gasUrl, payload);
+      if (resJson.status === 'success') await loadDataFromGAS();
+      else {
+        alert('更新失敗：' + resJson.message);
+        // 回滾樂觀更新，還原為修改前的資料
+        setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).map(r => r.id === payload.id ? (previous || r) : r));
+      }
+    } catch (err) {
+      alert('更新請求失敗：' + err.message);
+      // 回滾樂觀更新，還原為修改前的資料
+      setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).map(r => r.id === payload.id ? (previous || r) : r));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddCategory = (newCat) => setCategories(prev => [...prev, newCat]);
 
   const handleDeleteCategory = async (catId) => {
@@ -514,7 +576,7 @@ export default function App() {
   const filteredTransactions = useMemo(() => {
     return currentMonthTransactions.filter(t => {
       if (!t) return false;
-      const matchCategory = selectedCategoryFilter === 'ALL' || t.category === selectedCategoryFilter;
+      const matchCategory = selectedCategoryFilter === CATEGORY_FILTER_ALL || t.category === selectedCategoryFilter;
       const q = searchQuery.toLowerCase();
       const matchSearch = !q ||
         (t.title && String(t.title).toLowerCase().includes(q)) ||
@@ -525,10 +587,25 @@ export default function App() {
     });
   }, [currentMonthTransactions, selectedCategoryFilter, searchQuery]);
 
+  const filteredRecurringExpenses = useMemo(() => {
+    if (!Array.isArray(recurringExpenses)) return [];
+    return recurringExpenses.filter(r => {
+      if (!r) return false;
+      const matchCategory = recurringSelectedCategoryFilter === CATEGORY_FILTER_ALL || r.category === recurringSelectedCategoryFilter;
+      const q = recurringSearchQuery.toLowerCase();
+      const matchSearch = !q ||
+        (r.title && String(r.title).toLowerCase().includes(q)) ||
+        (r.payer && String(r.payer).toLowerCase().includes(q)) ||
+        (r.paymentMethod && String(r.paymentMethod).toLowerCase().includes(q)) ||
+        (r.note && String(r.note).toLowerCase().includes(q));
+      return matchCategory && matchSearch;
+    });
+  }, [recurringExpenses, recurringSelectedCategoryFilter, recurringSearchQuery]);
+
   // --- Render ---
   return (
     <div
-      className={`min-h-screen relative bg-canvas text-ink ${activeTab === 'overview' || activeTab === 'transactions' || activeTab === 'settings' ? 'overview-font' : 'font-sans'} p-3 sm:p-6 md:p-8 pb-28 overflow-x-hidden`}
+      className={`min-h-screen relative bg-canvas text-ink ${activeTab === 'overview' || activeTab === 'transactions' || activeTab === 'settings' || activeTab === 'recurring' ? 'overview-font' : 'font-sans'} p-3 sm:p-6 md:p-8 pb-28 overflow-x-hidden`}
       style={{
         backgroundImage: `url(${appBackground})`,
         backgroundSize: 'cover',
@@ -619,6 +696,23 @@ export default function App() {
           </div>
         )}
 
+        {/* --- 分頁 3: 恆常開支列表 --- */}
+        {activeTab === 'recurring' && (
+          <div className="space-y-6">
+            <RecurringExpenseList
+              recurringExpenses={filteredRecurringExpenses}
+              categories={categories}
+              selectedCategoryFilter={recurringSelectedCategoryFilter}
+              onCategoryFilterChange={setRecurringSelectedCategoryFilter}
+              searchQuery={recurringSearchQuery}
+              onSearchChange={setRecurringSearchQuery}
+              onEdit={setEditingRecurring}
+              onDelete={handleDeleteRecurring}
+              onAdd={() => setShowRecurringModal(true)}
+            />
+          </div>
+        )}
+
         {activeTab === 'settings' && (
           <SettingsPage
             gasUrl={gasUrl}
@@ -656,6 +750,17 @@ export default function App() {
           <span className="hidden sm:inline">支帳明細</span>
         </button>
         <button
+          onClick={() => setActiveTab('recurring')}
+          className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
+            activeTab === 'recurring'
+              ? 'bg-accent text-ink shadow-pixel-sm'
+              : 'text-ink-soft hover:text-ink hover:bg-surface-warm'
+          }`}
+        >
+          <RefreshCw className="w-5 h-5" />
+          <span className="hidden sm:inline">恆常開支</span>
+        </button>
+        <button
           onClick={() => setActiveTab('settings')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
             activeTab === 'settings'
@@ -671,7 +776,8 @@ export default function App() {
       {/* --- Modals --- */}
       {showUrlModal && <UrlModal initialUrl={gasUrl} onClose={() => setShowUrlModal(false)} onSave={handleSaveUrl} />}
       {showCategoryModal && <CategoryModal categories={categories} onClose={() => setShowCategoryModal(false)} onAddCategory={handleAddCategory} onDeleteCategory={handleDeleteCategory} />}
-      {showRecurringModal && <RecurringModal recurringExpenses={recurringExpenses} categories={categories} onClose={() => setShowRecurringModal(false)} onAdd={handleAddRecurring} onDelete={handleDeleteRecurring} loading={loading} />}
+      {showRecurringModal && <RecurringModal categories={categories} onClose={() => setShowRecurringModal(false)} onAdd={handleAddRecurring} loading={loading} />}
+      {editingRecurring && <RecurringModal categories={categories} initialRecurring={editingRecurring} onClose={() => setEditingRecurring(null)} onUpdate={handleUpdateRecurring} loading={loading} />}
       {showAddModal && <AddTransactionModal categories={categories} onClose={() => setShowAddModal(false)} onSubmit={handleAddTransaction} loading={loading} />}
       {editingTransaction && <EditTransactionModal transaction={editingTransaction} categories={categories} onClose={() => setEditingTransaction(null)} onSubmit={handleUpdateTransaction} loading={loading} />}
 

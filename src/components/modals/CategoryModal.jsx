@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { X, Settings, Trash2 } from 'lucide-react';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
@@ -7,6 +6,7 @@ import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
 // 📁 src/components/modals/CategoryModal.jsx
 // =========================================================================
 function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory }) {
+  const safeCategories = Array.isArray(categories) ? categories : [];
   const [newCatName, setNewCatName] = useState('');
   const [newCatColor, setNewCatColor] = useState('#3b82f6');
   const [newCatTitles, setNewCatTitles] = useState('');
@@ -14,7 +14,7 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
 
   const modalRef = useRef(null);
   useOnClickOutside(modalRef, onClose);
-  
+
   const handleAdd = () => {
     const trimmedName = newCatName.trim();
     if (!trimmedName) {
@@ -22,7 +22,7 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
       return;
     }
     // 檢查重複名稱
-    const isDuplicate = (categories || []).some(c => c?.name === trimmedName);
+    const isDuplicate = safeCategories.some(c => c?.name === trimmedName);
     if (isDuplicate) {
       setErrorMsg('此類別名稱已存在，請使用其他名稱！');
       return;
@@ -45,7 +45,7 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         ref={modalRef}
         className="category-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-ink">
@@ -60,15 +60,15 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
         <div className="pixel-border-sm bg-surface p-3 rounded-pixel-sm mb-4 space-y-2">
           <div className="text-xs font-semibold text-primary-dark">新增分類與快速標題：</div>
           <div className="flex items-center gap-2">
-            <input 
-              type="color" 
+            <input
+              type="color"
               value={newCatColor}
               onChange={(e) => setNewCatColor(e.target.value)}
               className="w-8 h-8 rounded-pixel-sm border-2 border-ink bg-surface-warm cursor-pointer"
             />
             <div className="pixel-border-sm flex-1 p-0.5">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 maxLength={20}
                 placeholder="類別名稱 (如: 寵物生活)"
                 value={newCatName}
@@ -82,8 +82,8 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
           </div>
           {errorMsg && <p className="text-[11px] text-danger">{errorMsg}</p>}
           <div className="pixel-border-sm p-0.5">
-            <input 
-              type="text" 
+            <input
+              type="text"
               maxLength={200}
               placeholder="預設熱門標題，用逗號分隔 (如: 糧食, 診所, 玩具)"
               value={newCatTitles}
@@ -91,7 +91,7 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
               className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-1.5 text-xs text-ink focus:outline-none"
             />
           </div>
-          <button 
+          <button
             onClick={handleAdd}
             className="pixel-button-primary w-full text-xs py-1.5"
           >
@@ -100,7 +100,7 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
         </div>
 
         <div className="space-y-2 max-h-60 overflow-y-auto">
-          {categories.map(cat => (
+          {safeCategories.map(cat => (
             <div key={cat.id} className="pixel-border-sm p-3 bg-surface flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <span className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.color }}></span>

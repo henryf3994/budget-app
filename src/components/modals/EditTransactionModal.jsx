@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { X, Edit3, Calendar } from 'lucide-react';
 import { PAYERS, PAYMENT_METHODS, getPayerStyle, getPaymentMethodStyle } from '../../utils/constants.js';
@@ -48,7 +47,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         ref={modalRef}
         className="edit-transaction-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-ink">
@@ -91,7 +90,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
             <label className="block text-xs font-medium text-muted mb-1">金額</label>
             <div className="pixel-border-sm relative p-0.5">
               <span className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted text-sm font-semibold">HK$</span>
-              <input 
+              <input
                 type="number"
                 step="0.01"
                 required
@@ -111,7 +110,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
           <div>
             <label className="block text-xs font-medium text-muted mb-1">類別</label>
             <div className="pixel-border-sm p-0.5">
-              <select 
+              <select
                 value={formData.category || (safeCategories[0]?.name || '其他')}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-ink text-sm focus:outline-none focus:border-primary"
@@ -128,7 +127,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
           <div>
             <label className="block text-xs font-medium text-muted mb-1">項目標題</label>
             <div className="pixel-border-sm p-0.5">
-              <input 
+              <input
                 type="text"
                 required
                 maxLength={50}
@@ -181,16 +180,16 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
                 </button>
               ))}
             </div>
-            <input 
+            <input
               type="text"
               maxLength={30}
               placeholder="自訂其他付款方式..."
               value={formData.customPaymentMethod || ''}
               onChange={(e) => {
-                setFormData({ 
-                  ...formData, 
+                setFormData({
+                  ...formData,
                   customPaymentMethod: e.target.value,
-                  isCustomPayment: true 
+                  isCustomPayment: true
                 });
                 setFieldErrors(prev => ({ ...prev, customPaymentMethod: '' }));
               }}
@@ -204,7 +203,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
           <div>
             <label className="block text-xs font-medium text-muted mb-1">備註</label>
             <div className="pixel-border-sm p-0.5">
-              <input 
+              <input
                 type="text"
                 maxLength={200}
                 value={formData.note || ''}
@@ -215,14 +214,14 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
           </div>
 
           <div className="pt-2 flex gap-2">
-            <button 
+            <button
               type="button"
               onClick={onClose}
               className="pixel-button-accent w-1/2 py-2.5"
             >
               取消
             </button>
-            <button 
+            <button
               type="submit"
               disabled={loading}
               className="pixel-button-primary w-1/2 py-2.5"

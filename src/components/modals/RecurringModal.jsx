@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, RefreshCw, Trash2 } from 'lucide-react';
+import { X, RefreshCw } from 'lucide-react';
 import { PAYERS, PAYMENT_METHODS, getPayerStyle, getPaymentMethodStyle } from '../../utils/constants.js';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
 import { normalizePaymentMethod, sanitizeText, validateRecurringFields } from '../../utils/validation.js';
@@ -7,26 +7,28 @@ import { normalizePaymentMethod, sanitizeText, validateRecurringFields } from '.
 // =========================================================================
 // 📁 src/components/modals/RecurringModal.jsx
 // =========================================================================
-function RecurringModal({ 
-  recurringExpenses = [], 
-  categories = [], 
-  onClose, 
-  onAdd, 
-  onDelete, 
-  loading 
+function RecurringModal({
+  categories = [],
+  onClose,
+  onAdd,
+  loading,
+  initialRecurring,
+  onUpdate
 }) {
-  // 安全取得第一個分類名稱
   const modalRef = useRef(null);
   useOnClickOutside(modalRef, onClose);
-  
-  const defaultCategory = Array.isArray(categories) && categories.length > 0 
-    ? (categories[0]?.name || '其他') 
-    : '其他';
 
-  const defaultPayer = Array.isArray(PAYERS) && PAYERS.length > 0 ? PAYERS[0] : '';
-  const defaultPaymentMethod = Array.isArray(PAYMENT_METHODS) && PAYMENT_METHODS.length > 0 ? PAYMENT_METHODS[0] : '';
+  // 安全取得第一個分類名稱
+  const safeCategories = Array.isArray(categories) ? categories : [];
+  const defaultCategory = safeCategories[0]?.name || '其他';
+  const defaultPayer = PAYERS[0];
+  const defaultPaymentMethod = PAYMENT_METHODS[0];
 
-  const [newRec, setNewRec] = useState({
+  // 編輯模式：傳入 initialRecurring 即代表編輯既有的恆常開支
+  const isEditing = !!initialRecurring;
+
+  // 新增表單的初始／重設狀態（提交後重設共用此函數，避免兩份物件漂移）
+  const createEmptyRecurring = () => ({
     amount: '',
     category: defaultCategory,
     title: '',
@@ -38,9 +40,30 @@ function RecurringModal({
     frequency: 'Monthly',
     dayOfMonth: 1
   });
+
+  // 編輯模式：以既有恆常開支資料預填表單
+  const createInitialRecurring = () => {
+    const item = initialRecurring;
+    if (!item) return createEmptyRecurring();
+    const isCustom = !!item.paymentMethod && !PAYMENT_METHODS.includes(item.paymentMethod);
+    return {
+      amount: String(item.amount ?? ''),
+      category: safeCategories.some(c => c.name === item.category) ? item.category : defaultCategory,
+      title: item.title || '',
+      payer: item.payer || defaultPayer,
+      paymentMethod: isCustom ? defaultPaymentMethod : (item.paymentMethod || defaultPaymentMethod),
+      customPaymentMethod: isCustom ? item.paymentMethod : '',
+      isCustomPayment: isCustom,
+      note: item.note || '',
+      frequency: item.frequency || 'Monthly',
+      dayOfMonth: item.dayOfMonth || 1
+    };
+  };
+
+  const [newRec, setNewRec] = useState(isEditing ? createInitialRecurring : createEmptyRecurring);
   const [fieldErrors, setFieldErrors] = useState({});
 
-  const handleAddSubmit = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
 
     const errors = validateRecurringFields(newRec);
@@ -56,49 +79,36 @@ function RecurringModal({
       paymentMethod: normalizePaymentMethod(newRec)
     };
 
-    onAdd(finalData);
-    setNewRec({
-      amount: '',
-      category: defaultCategory,
-      title: '',
-      payer: defaultPayer,
-      paymentMethod: defaultPaymentMethod,
-      customPaymentMethod: '',
-      isCustomPayment: false,
-      note: '',
-      frequency: 'Monthly',
-      dayOfMonth: 1
-    });
-    setFieldErrors({});
+    if (isEditing) {
+      // 保留原本的 id（以及 initialRecurring 上的其他唯讀欄位）
+      onUpdate({ ...initialRecurring, ...finalData });
+    } else {
+      onAdd(finalData);
+      setNewRec(createEmptyRecurring());
+      setFieldErrors({});
+    }
   };
-
-  const safeCategories = Array.isArray(categories) ? categories : [];
-  const safeRecurring = Array.isArray(recurringExpenses) ? recurringExpenses : [];
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         ref={modalRef}
-        className="recurring-modal pixel-card bg-surface max-w-xl w-full p-6 relative max-h-[90vh] overflow-y-auto">
+        className="recurring-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-ink">
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-lg font-bold text-ink mb-2 flex items-center gap-2">
+        <h3 className="text-lg font-bold text-ink mb-4 flex items-center gap-2">
           <RefreshCw className="w-5 h-5 text-primary-dark" />
-          恆常固定支出
+          {isEditing ? '編輯恆常開支' : '新增恆常開支'}
         </h3>
-        <p className="text-xs text-muted mb-4">
-          設定每月扣款日，每日排程自動產生交易至記帳本。
-        </p>
 
-        <form onSubmit={handleAddSubmit} className="bg-surface-warm border-2 border-ink p-4 rounded-pixel-sm space-y-4 mb-6">
-          <div className="text-xs font-semibold text-primary-dark">新增恆常開支設定：</div>
+        <form onSubmit={handleSubmit} className="space-y-4">
 
           <div>
             <label className="block text-lg font-medium text-muted mb-1">項目標題</label>
             <div className="pixel-border-sm p-0.5">
-              <input 
+              <input
                 type="text"
                 required
                 maxLength={50}
@@ -118,7 +128,7 @@ function RecurringModal({
             <label className="block text-lg font-medium text-muted mb-1">金額</label>
             <div className="pixel-border-sm relative p-0.5">
               <span className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted text-sm font-semibold">HK$</span>
-              <input 
+              <input
                 type="number"
                 step="1"
                 required
@@ -139,7 +149,7 @@ function RecurringModal({
           <div>
             <label className="block text-lg font-medium text-muted mb-1">類別</label>
             <div className="pixel-border-sm p-0.5">
-              <select 
+              <select
                 value={newRec.category}
                 onChange={(e) => setNewRec({ ...newRec, category: e.target.value })}
                 className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-sm text-ink focus:outline-none focus:border-primary"
@@ -191,7 +201,7 @@ function RecurringModal({
                 </button>
               ))}
             </div>
-            <input 
+            <input
               type="text"
               maxLength={30}
               placeholder="自訂其他付款方式..."
@@ -215,7 +225,7 @@ function RecurringModal({
             <label className="block text-lg font-medium text-muted mb-1">每月扣款日</label>
             <div className="flex items-center gap-2">
               <div className="pixel-border-sm flex-1 p-0.5">
-                <input 
+                <input
                   type="number"
                   min="1"
                   max="31"
@@ -235,7 +245,7 @@ function RecurringModal({
           <div>
             <label className="block text-lg font-medium text-muted mb-1">備註</label>
             <div className="pixel-border-sm p-0.5">
-              <input 
+              <input
                 type="text"
                 maxLength={200}
                 placeholder="可留空"
@@ -246,47 +256,25 @@ function RecurringModal({
             </div>
           </div>
 
-          <div className="pt-2">
-            <button 
+          <div className="pt-2 flex gap-2">
+            {isEditing && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="pixel-button-accent w-1/2 py-2.5"
+              >
+                取消
+              </button>
+            )}
+            <button
               type="submit"
               disabled={loading}
-              className="pixel-button-accent w-full py-2.5"
+              className={`pixel-button-primary py-2.5 ${isEditing ? 'w-1/2' : 'w-full'}`}
             >
-              {loading ? '正在提交中...' : '+ 新增恆常項目'}
+              {loading ? '正在提交中...' : (isEditing ? '儲存修改' : '確認新增恆常開支')}
             </button>
           </div>
         </form>
-
-        <div className="space-y-2 max-h-60 overflow-y-auto">
-          {safeRecurring.length === 0 ? (
-            <div className="text-center py-6 text-muted text-xs">目前沒有恆常固定支出</div>
-          ) : (
-            safeRecurring.map((item, index) => (
-              <div key={item.id || `rec-${index}`} className="recurring-item pixel-border-sm p-3 bg-surface-soft flex items-center justify-between text-xs">
-                <div>
-                  <div className="font-bold text-ink flex items-center gap-2">
-                    {item.title}
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-pixel-sm bg-accent text-ink border border-ink">
-                      每月 {item.dayOfMonth} 號扣款
-                    </span>
-                  </div>
-                  <div className="text-muted mt-0.5">
-                    {item.category} • {item.payer} • {item.paymentMethod}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-ink">HK$ {(Number.isFinite(Number(item.amount)) ? Number(item.amount) : 0).toFixed(2)}</span>
-                  <button 
-                    onClick={() => onDelete(item.id)}
-                    className="text-danger hover:text-primary-dark"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
       </div>
     </div>
   );

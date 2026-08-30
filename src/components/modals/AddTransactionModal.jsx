@@ -1,6 +1,5 @@
-
 import React, { useState, useMemo, useRef } from 'react';
-import { X, Plus, Calendar } from 'lucide-react';
+import { X, RefreshCw, Calendar } from 'lucide-react';
 import { INITIAL_CATEGORIES, PAYERS, PAYMENT_METHODS, getLocalDateString, getPayerStyle, getPaymentMethodStyle } from '../../utils/constants.js';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
 import { normalizePaymentMethod, sanitizeText, validateTransactionFields } from '../../utils/validation.js';
@@ -27,7 +26,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
 
   const modalRef = useRef(null);
   useOnClickOutside(modalRef, onClose);
-  
+
   const currentCategoryTitles = useMemo(() => {
     const found = safeCategories.find(c => c.name === formData.category);
     return found ? (found.defaultTitles || []) : [];
@@ -53,7 +52,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         ref={modalRef}
         className="add-transaction-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-ink">
@@ -61,7 +60,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
         </button>
 
         <h3 className="text-lg font-bold text-ink mb-4 flex items-center gap-2">
-          <Plus className="w-5 h-5 text-primary-dark" />
+          <RefreshCw className="w-5 h-5 text-primary-dark" />
           新增支出記帳
         </h3>
 
@@ -96,7 +95,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
             <label className="block text-lg font-medium text-muted mb-1">金額</label>
             <div className="pixel-border-sm relative p-0.5">
               <span className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted text-sm font-semibold">HK$</span>
-              <input 
+              <input
                 type="number"
                 step="1"
                 required
@@ -117,7 +116,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
           <div>
             <label className="block text-lg font-medium text-muted mb-1">類別</label>
             <div className="pixel-border-sm p-0.5">
-              <select 
+              <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-ink text-sm focus:outline-none focus:border-primary"
@@ -134,7 +133,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
           <div>
             <label className="block text-lg font-medium text-muted mb-1">項目標題</label>
             <div className="pixel-border-sm p-0.5">
-              <input 
+              <input
                 type="text"
                 required
                 maxLength={50}
@@ -206,16 +205,16 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
                 </button>
               ))}
             </div>
-            <input 
+            <input
               type="text"
               maxLength={30}
               placeholder="自訂其他付款方式..."
               value={formData.customPaymentMethod}
               onChange={(e) => {
-                setFormData({ 
-                  ...formData, 
+                setFormData({
+                  ...formData,
                   customPaymentMethod: e.target.value,
-                  isCustomPayment: true 
+                  isCustomPayment: true
                 });
                 setFieldErrors(prev => ({ ...prev, customPaymentMethod: '' }));
               }}
@@ -229,7 +228,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
           <div>
             <label className="block text-lg font-medium text-muted mb-1">備註</label>
             <div className="pixel-border-sm p-0.5">
-              <input 
+              <input
                 type="text"
                 maxLength={200}
                 placeholder="可留空"
@@ -241,7 +240,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
           </div>
 
           <div className="pt-2">
-            <button 
+            <button
               type="submit"
               disabled={loading}
               className="pixel-button-primary w-full py-2.5"

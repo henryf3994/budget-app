@@ -1,4 +1,5 @@
 import React from 'react';
+import { CATEGORY_FILTER_ALL } from '../utils/constants.js';
 
 // =========================================================================
 // 📁 src/components/CategoryBreakdown.jsx
@@ -71,12 +72,12 @@ function CategoryBreakdown({ breakdownData, selectedCategoryFilter, onCategoryFi
             const cell = healthBarCells[cellIndex];
             const cat = cell?.category;
             const isSelected = cat && selectedCategoryFilter === cat.name;
-            const hasSelection = selectedCategoryFilter !== 'ALL';
+            const hasSelection = selectedCategoryFilter !== CATEGORY_FILTER_ALL;
 
             return (
               <div
                 key={`bar-cell-${cellIndex}`}
-                onClick={() => cat && onCategoryFilterChange(isSelected ? 'ALL' : cat.name)}
+                onClick={() => cat && onCategoryFilterChange(isSelected ? CATEGORY_FILTER_ALL : cat.name)}
                 style={cat ? { backgroundColor: cat.color } : undefined}
                 title={cat ? `${cat.name}: ${cat.percentage}% (HK$ ${(Number(cat.total) || 0).toLocaleString()})` : undefined}
                 className={`pixel-health-cell ${cat ? 'pixel-health-cell--filled cursor-pointer' : 'pixel-health-cell--empty'} ${
@@ -96,7 +97,7 @@ function CategoryBreakdown({ breakdownData, selectedCategoryFilter, onCategoryFi
           return (
             <button
               key={cat.id}
-              onClick={() => onCategoryFilterChange(isSelected ? 'ALL' : cat.name)}
+              onClick={() => onCategoryFilterChange(isSelected ? CATEGORY_FILTER_ALL : cat.name)}
               className={`pixel-border-sm p-3 text-left transition-all min-w-0 ${
                 isSelected
                   ? 'bg-surface-warm shadow-pixel-sm'

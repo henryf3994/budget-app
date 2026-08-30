@@ -11,6 +11,9 @@ const INITIAL_CATEGORIES = [
   { id: 'cat_7', name: '其他', color: '#8b5cf6', defaultTitles: ['雜項支出', '轉帳提款', '稅款', '人情禮物'] },
 ];
 
+const CATEGORY_FILTER_ALL = 'ALL';
+const FALLBACK_CATEGORY_COLOR = INITIAL_CATEGORIES.find(c => c.name === '其他')?.color ?? '#8b5cf6';
+
 const PAYERS = ['YSK', 'FMH'];
 const PAYMENT_METHODS = ['信用卡', '現金', '轉賬', 'Alipay'];
 
@@ -76,6 +79,8 @@ const getLocalDateString = () => {
 
 export {
   INITIAL_CATEGORIES,
+  CATEGORY_FILTER_ALL,
+  FALLBACK_CATEGORY_COLOR,
   PAYERS,
   PAYMENT_METHODS,
   PAYER_STYLES,
