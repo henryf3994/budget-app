@@ -1,10 +1,28 @@
-import React from 'react';
+import { useMemo } from 'react';
 import { CATEGORY_FILTER_ALL } from '../utils/constants.js';
 
 // =========================================================================
 // 📁 src/components/CategoryBreakdown.jsx
 // =========================================================================
 const HEALTH_BAR_CELL_COUNT = 20;
+
+// 百分比總和可能因四捨五入而不等於 100%，讓「最後一項」吸收剩下的
+// 寬度，確保整個進度條剛好填滿。O(n) 單次累加，取代在 map 內重複 reduce。
+function normalizePercentages(items) {
+  const percentages = items.map(item => Number(item.percentage || 0));
+  const totalRounded = percentages.reduce((sum, value) => sum + value, 0);
+  let previousTotal = 0;
+
+  return items.map((item, index) => {
+    const isLast = index === items.length - 1;
+    let widthPercent = percentages[index];
+    if (totalRounded > 0 && isLast) {
+      widthPercent = Math.max(0, 100 - previousTotal);
+    }
+    previousTotal += percentages[index];
+    return { ...item, widthPercent };
+  });
+}
 
 function getHealthBarCells(breakdown) {
   const totalWidth = breakdown.reduce((sum, cat) => sum + Math.max(0, cat.widthPercent), 0);
@@ -35,28 +53,21 @@ function getHealthBarCells(breakdown) {
   });
 
   return allocations.flatMap((allocation, categoryIndex) => (
-    Array.from({ length: allocation.cells }, (_, cellIndex) => ({
+    Array.from({ length: allocation.cells }, () => ({
       category: breakdown[categoryIndex],
-      cellIndex,
     }))
   ));
 }
 
 function CategoryBreakdown({ breakdownData, selectedCategoryFilter, onCategoryFilterChange }) {
-  const normalizedBreakdown = breakdownData.map((cat, index, array) => {
-    const totalRounded = array.reduce((sum, item) => sum + Number(item.percentage || 0), 0);
-    const isLast = index === array.length - 1;
-    const previousTotal = array
-      .slice(0, index)
-      .reduce((sum, item) => sum + Number(item.percentage || 0), 0);
+  const items = Array.isArray(breakdownData) ? breakdownData : [];
+  const normalizedBreakdown = useMemo(() => normalizePercentages(items), [items]);
+  const healthBarCells = useMemo(() => getHealthBarCells(normalizedBreakdown), [normalizedBreakdown]);
 
-    const widthPercent = totalRounded > 0 && isLast
-      ? Math.max(0, 100 - previousTotal)
-      : Number(cat.percentage || 0);
-
-    return { ...cat, widthPercent };
-  });
-  const healthBarCells = getHealthBarCells(normalizedBreakdown);
+  // 點擊已選取的分類時取消篩選，否則切換到該分類
+  const toggleSelection = (name) => onCategoryFilterChange(
+    selectedCategoryFilter === name ? CATEGORY_FILTER_ALL : name
+  );
 
   return (
     <div className="pixel-card p-5">
@@ -77,7 +88,7 @@ function CategoryBreakdown({ breakdownData, selectedCategoryFilter, onCategoryFi
             return (
               <div
                 key={`bar-cell-${cellIndex}`}
-                onClick={() => cat && onCategoryFilterChange(isSelected ? CATEGORY_FILTER_ALL : cat.name)}
+                onClick={() => cat && toggleSelection(cat.name)}
                 style={cat ? { backgroundColor: cat.color } : undefined}
                 title={cat ? `${cat.name}: ${cat.percentage}% (HK$ ${(Number(cat.total) || 0).toLocaleString()})` : undefined}
                 className={`pixel-health-cell ${cat ? 'pixel-health-cell--filled cursor-pointer' : 'pixel-health-cell--empty'} ${
@@ -91,13 +102,14 @@ function CategoryBreakdown({ breakdownData, selectedCategoryFilter, onCategoryFi
 
       {/* Category Cards Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        {breakdownData.map((cat) => {
+        {items.map((cat) => {
           const isSelected = selectedCategoryFilter === cat.name;
 
           return (
             <button
+              type="button"
               key={cat.id}
-              onClick={() => onCategoryFilterChange(isSelected ? CATEGORY_FILTER_ALL : cat.name)}
+              onClick={() => toggleSelection(cat.name)}
               className={`pixel-border-sm p-3 text-left transition-all min-w-0 ${
                 isSelected
                   ? 'bg-surface-warm shadow-pixel-sm'

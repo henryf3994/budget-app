@@ -1,10 +1,28 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { TrendingUp } from 'lucide-react';
 
 // =========================================================================
 // 📁 src/components/ExpenseTrendChart.jsx
 // 支出趨勢折線圖 (7 個月趨勢，支援總支出 / 分類趨勢切換)
 // =========================================================================
+
+// --- 圖表幾何參數 ---
+const W = 720;
+const H = 280;
+const PAD_L = 60;
+const PAD_R = 20;
+const PAD_T = 20;
+const PAD_B = 40;
+const MONTHS_SHOWN = 7;
+
+// SVG 內使用的顏色（對應 tailwind.config.js 的設計 token，避免字面量重複散落）
+const CHART_COLORS = {
+  line: '#F28C77',            // primary
+  surfaceWarm: '#FFF9EF',     // surface-warm（資料點留白填充）
+  axisLabel: '#8F8995',       // muted
+  highlightLabel: '#2A2356',  // ink
+  gridLine: '#E7DCCB',        // 網格線（無對應 token，保留字面量）
+};
 
 // 在 (year, month) 基礎上加上 delta 個月，回傳新的 { year, month }
 function addMonths(year, month, delta) {
@@ -36,9 +54,15 @@ function formatCompact(v) {
   return String(Math.round(v));
 }
 
+// 格式化圖表的 tooltip 文字，例如「2026年8月: HK$ 12,500」
+function formatTooltip(year, month, value) {
+  return `${year}年${month}月: HK$ ${value.toLocaleString()}`;
+}
+
 function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth, onMonthSelect }) {
+  const safeCategories = Array.isArray(categories) ? categories : [];
   const [viewMode, setViewMode] = useState('total'); // 'total' | 'category'
-  const [selectedCategoryId, setSelectedCategoryId] = useState(categories[0]?.id || '');
+  const [selectedCategoryId, setSelectedCategoryId] = useState(safeCategories[0]?.id || '');
 
   const today = new Date();
   const todayYear = today.getFullYear();
@@ -65,7 +89,7 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
   const months = useMemo(() => {
     const list = [];
     let cur = { ...windowStart };
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < MONTHS_SHOWN; i++) {
       list.push({ ...cur });
       cur = addMonths(cur.year, cur.month, 1);
     }
@@ -91,8 +115,11 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
   }, [months, transactions]);
 
   // 有效分類（若選取的分類被刪除則退回第一個）
-  const effectiveCategory = categories.find(c => c.id === selectedCategoryId) || categories[0];
-  const lineColor = viewMode === 'total' ? '#F28C77' : (effectiveCategory?.color || '#F28C77');
+  const effectiveCategory = safeCategories.find(c => c.id === selectedCategoryId) || safeCategories[0];
+  const lineColor = viewMode === 'total' ? CHART_COLORS.line : (effectiveCategory?.color || CHART_COLORS.line);
+
+  // 點擊月份標籤／資料點時切換目前顯示的月份
+  const selectMonth = (year, month) => onMonthSelect?.(year, month);
 
   // 要繪製的數值
   const values = useMemo(() => {
@@ -104,30 +131,30 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
   // 選取月份在視窗中的索引（-1 代表不在視窗內）
   const highlightIndex = months.findIndex(m => m.year === currentYear && m.month === currentMonth);
 
-  // --- SVG 幾何參數 ---
-  const W = 720;
-  const H = 280;
-  const PAD_L = 60;
-  const PAD_R = 20;
-  const PAD_T = 20;
-  const PAD_B = 40;
-  const chartW = W - PAD_L - PAD_R;
-  const chartH = H - PAD_T - PAD_B;
-  const chartBottom = PAD_T + chartH;
+  // --- SVG 幾何參數與繪圖路徑（僅於 values 變動時重算）---
+  const { xPos, yPos, chartBottom, linePath, areaPath, gridLines } = useMemo(() => {
+    const chartW = W - PAD_L - PAD_R;
+    const chartH = H - PAD_T - PAD_B;
+    const chartBottom = PAD_T + chartH;
 
-  const maxVal = niceCeil(Math.max(...values, 1));
-  const yScale = chartH / maxVal;
-  const xPos = (i) => PAD_L + (i * (chartW / 6));
-  const yPos = (v) => chartBottom - (v * yScale);
+    const maxVal = niceCeil(Math.max(...values, 1));
+    const yScale = chartH / maxVal;
+    const xPos = (i) => PAD_L + (i * (chartW / (MONTHS_SHOWN - 1)));
+    const yPos = (v) => chartBottom - (v * yScale);
 
-  const linePath = values.map((v, i) => `${i === 0 ? 'M' : 'L'} ${xPos(i).toFixed(1)} ${yPos(v).toFixed(1)}`).join(' ');
-  const areaPath = `${linePath} L ${xPos(6).toFixed(1)} ${chartBottom} L ${xPos(0).toFixed(1)} ${chartBottom} Z`;
+    const linePath = values
+      .map((v, i) => `${i === 0 ? 'M' : 'L'} ${xPos(i).toFixed(1)} ${yPos(v).toFixed(1)}`)
+      .join(' ');
+    const areaPath = `${linePath} L ${xPos(MONTHS_SHOWN - 1).toFixed(1)} ${chartBottom} L ${xPos(0).toFixed(1)} ${chartBottom} Z`;
 
-  // 水平格線（0 / 25% / 50% / 75% / 100%）
-  const gridLines = [0, 0.25, 0.5, 0.75, 1].map(f => ({
-    y: chartBottom - (f * chartH),
-    value: maxVal * f
-  }));
+    // 水平格線（0 / 25% / 50% / 75% / 100%）
+    const gridLines = [0, 0.25, 0.5, 0.75, 1].map(f => ({
+      y: chartBottom - (f * chartH),
+      value: maxVal * f,
+    }));
+
+    return { xPos, yPos, chartBottom, maxVal, linePath, areaPath, gridLines };
+  }, [values]);
 
   const rangeLabel = `${windowStart.year}年${windowStart.month}月 - ${windowEnd.year}年${windowEnd.month}月`;
 
@@ -141,6 +168,7 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
         </h2>
         <div className="flex items-center gap-1 rounded-pixel-sm border-2 border-ink bg-surface-warm p-1">
           <button
+            type="button"
             onClick={() => setViewMode('total')}
             className={`px-3 py-1 rounded-pixel-sm text-xs font-semibold transition-all ${
               viewMode === 'total'
@@ -151,6 +179,7 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
             總支出
           </button>
           <button
+            type="button"
             onClick={() => setViewMode('category')}
             className={`px-3 py-1 rounded-pixel-sm text-xs font-semibold transition-all ${
               viewMode === 'category'
@@ -169,8 +198,9 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
       {/* 分類選擇（僅分類趨勢模式顯示） */}
       {viewMode === 'category' && (
         <div className="flex flex-wrap gap-2 mb-4">
-          {categories.map(cat => (
+          {safeCategories.map(cat => (
             <button
+              type="button"
               key={cat.id}
               onClick={() => setSelectedCategoryId(cat.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
@@ -203,11 +233,11 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
               y1={g.y}
               x2={W - PAD_R}
               y2={g.y}
-              stroke="#E7DCCB"
+              stroke={CHART_COLORS.gridLine}
               strokeWidth="1"
               strokeDasharray={i === 0 ? '0' : '4 4'}
             />
-            <text x={PAD_L - 8} y={g.y + 4} textAnchor="end" fontSize="11" fill="#8F8995">
+            <text x={PAD_L - 8} y={g.y + 4} textAnchor="end" fontSize="11" fill={CHART_COLORS.axisLabel}>
               {formatCompact(g.value)}
             </text>
           </g>
@@ -255,23 +285,22 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
         {/* 資料點（可點擊切換月份） */}
         {values.map((v, i) => {
           const isHighlight = i === highlightIndex;
-          const handleClick = () => onMonthSelect?.(months[i].year, months[i].month);
           return (
-            <g key={i} className="cursor-pointer" onClick={handleClick}>
+            <g key={i} className="cursor-pointer" onClick={() => selectMonth(months[i].year, months[i].month)}>
               {/* 較大的隱形點擊區域，方便點擊 */}
               <circle cx={xPos(i)} cy={yPos(v)} r="14" fill="transparent">
-                <title>{`${months[i].year}年${months[i].month}月: HK$ ${v.toLocaleString()}`}</title>
+                <title>{formatTooltip(months[i].year, months[i].month, v)}</title>
               </circle>
               <circle
                 cx={xPos(i)}
                 cy={yPos(v)}
                 r={isHighlight ? 6 : 4}
-                fill={isHighlight ? lineColor : '#FFF9EF'}
+                fill={isHighlight ? lineColor : CHART_COLORS.surfaceWarm}
                 stroke={lineColor}
                 strokeWidth={isHighlight ? 3 : 2}
                 className="transition-all"
               >
-                <title>{`${months[i].year}年${months[i].month}月: HK$ ${v.toLocaleString()}`}</title>
+                <title>{formatTooltip(months[i].year, months[i].month, v)}</title>
               </circle>
               {isHighlight && (
                 <circle
@@ -283,7 +312,7 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
                   strokeWidth="1.5"
                   opacity="0.5"
                 >
-                  <title>{`${months[i].year}年${months[i].month}月: HK$ ${v.toLocaleString()}`}</title>
+                  <title>{formatTooltip(months[i].year, months[i].month, v)}</title>
                 </circle>
               )}
             </g>
@@ -294,16 +323,15 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
         {months.map((m, i) => {
           const isHighlight = i === highlightIndex;
           const isJanuary = m.month === 1;
-          const handleClick = () => onMonthSelect?.(m.year, m.month);
           return (
-            <g key={i} className="cursor-pointer" onClick={handleClick}>
+            <g key={i} className="cursor-pointer" onClick={() => selectMonth(m.year, m.month)}>
               {isJanuary && (
                 <text
                   x={xPos(i)}
                   y={H - 26}
                   textAnchor="middle"
                   fontSize="10"
-                  fill={isHighlight ? '#2A2356' : '#8F8995'}
+                  fill={isHighlight ? CHART_COLORS.highlightLabel : CHART_COLORS.axisLabel}
                 >
                   {m.year}
                 </text>
@@ -314,7 +342,7 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
                 textAnchor="middle"
                 fontSize="11"
                 fontWeight={isHighlight ? 700 : 400}
-                fill={isHighlight ? '#2A2356' : '#8F8995'}
+                fill={isHighlight ? CHART_COLORS.highlightLabel : CHART_COLORS.axisLabel}
               >
                 {m.month}月
               </text>

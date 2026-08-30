@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, RefreshCw, Settings, PieChart, Clock, List } from 'lucide-react';
 
 import HeaderBar from './components/HeaderBar';
@@ -14,10 +14,27 @@ import RecurringModal from './components/modals/RecurringModal';
 import AddTransactionModal from './components/modals/AddTransactionModal';
 import EditTransactionModal from './components/modals/EditTransactionModal';
 import appBackground from './assets/background.png';
-import { INITIAL_CATEGORIES, CATEGORY_FILTER_ALL } from './utils/constants.js';
+import { INITIAL_CATEGORIES, CATEGORY_FILTER_ALL, FALLBACK_CATEGORY_COLOR } from './utils/constants.js';
 import { ensureValidCategories, isValidUrl, normalizePaymentMethod, sanitizeRecurring, sanitizeText, sanitizeTransaction, validateRecurringForm, validateTransactionForm } from './utils/validation.js';
 import { safeGetItem, safeSetItem } from './utils/storage.js';
 import { fetchJson, postToGAS } from './utils/gasApi.js';
+
+// 尚未設定同步網址時的提示訊息（依操作類型區分，集中管理避免字面量重複）
+const NO_GAS_URL_MESSAGES = {
+  transactionAdd: '尚未設定 GAS URL！此記錄只會暫存於畫面，重新整理後將消失。請由右上角「⋯」選單設定同步網址。',
+  transactionUpdate: '尚未設定 GAS URL！此修改只會暫存於畫面，重新整理後將消失。請由右上角「⋯」選單設定同步網址。',
+  recurringAdd: '尚未設定 GAS URL！此恆常開支只會暫存於畫面，重新整理後將消失。請由右上角「⋯」選單設定同步網址。',
+  recurringUpdate: '尚未設定 GAS URL！此修改只會暫存於畫面，重新整理後將消失。請由右上角「⋯」選單設定同步網址。',
+  recategorize: '尚未設定 GAS URL！類別重新歸類只會暫存於畫面，重新整理後將還原。'
+};
+
+// 依狀態訊息類型回傳對應的樣式類別
+const statusClass = (type) =>
+  type === 'error'
+    ? 'bg-red-50 border-danger text-danger'
+    : type === 'success'
+      ? 'bg-green-50 border-success text-success'
+      : 'bg-surface-warm border-ink text-ink-soft';
 
 export default function App() {
   // --- Global States ---
@@ -82,6 +99,31 @@ export default function App() {
         setStatusMsg({ type: '', text: '' });
       }, autoHideMs);
     }
+  };
+
+  // 尚未設定同步網址時的統一警告（訊息內容集中在模組頂層的 NO_GAS_URL_MESSAGES）
+  const warnNoGasUrl = (key) => showStatus('error', NO_GAS_URL_MESSAGES[key]);
+
+  // --- 月份導覽（HeaderBar 與趨勢圖共用，避免重複的內聯箭頭函式） ---
+  const handlePrevMonth = () => {
+    if (currentMonth === 1) {
+      setCurrentYear(year => year - 1);
+      setCurrentMonth(12);
+    } else {
+      setCurrentMonth(month => month - 1);
+    }
+  };
+  const handleNextMonth = () => {
+    if (currentMonth === 12) {
+      setCurrentYear(year => year + 1);
+      setCurrentMonth(1);
+    } else {
+      setCurrentMonth(month => month + 1);
+    }
+  };
+  const handleSelectMonth = (year, month) => {
+    setCurrentYear(year);
+    setCurrentMonth(month);
   };
 
   useEffect(() => {
@@ -202,6 +244,11 @@ export default function App() {
     });
   };
 
+  // 更新失敗時還原單筆恆常開支（previous 為修改前的原資料；找不到原資料時保留現列）
+  const rollbackRecurringUpdate = (id, previous) => {
+    setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).map(r => (r?.id === id ? (previous || r) : r)));
+  };
+
   const handleAddTransaction = async (formData) => {
     const validationError = validateTransactionForm(formData);
     if (validationError) {
@@ -226,7 +273,7 @@ export default function App() {
 
     // 尚未設定同步網址時明確警告，避免使用者以為資料已保存
     if (!gasUrl) {
-      showStatus('error', '尚未設定 GAS URL！此記錄只會暫存於畫面，重新整理後將消失。請由右上角「⋯」選單設定同步網址。');
+      warnNoGasUrl('transactionAdd');
       return;
     }
 
@@ -279,7 +326,7 @@ export default function App() {
 
     // 尚未設定同步網址時明確警告，避免使用者以為修改已保存
     if (!gasUrl) {
-      showStatus('error', '尚未設定 GAS URL！此修改只會暫存於畫面，重新整理後將消失。請由右上角「⋯」選單設定同步網址。');
+      warnNoGasUrl('transactionUpdate');
       return;
     }
 
@@ -347,7 +394,7 @@ export default function App() {
 
     // 尚未設定同步網址時明確警告，避免使用者以為資料已保存
     if (!gasUrl) {
-      showStatus('error', '尚未設定 GAS URL！此恆常開支只會暫存於畫面，重新整理後將消失。請由右上角「⋯」選單設定同步網址。');
+      warnNoGasUrl('recurringAdd');
       return;
     }
 
@@ -423,7 +470,7 @@ export default function App() {
 
     // 尚未設定同步網址時明確警告，避免使用者以為修改已保存
     if (!gasUrl) {
-      showStatus('error', '尚未設定 GAS URL！此修改只會暫存於畫面，重新整理後將消失。請由右上角「⋯」選單設定同步網址。');
+      warnNoGasUrl('recurringUpdate');
       return;
     }
 
@@ -434,12 +481,12 @@ export default function App() {
       else {
         alert('更新失敗：' + resJson.message);
         // 回滾樂觀更新，還原為修改前的資料
-        setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).map(r => r.id === payload.id ? (previous || r) : r));
+        rollbackRecurringUpdate(payload.id, previous);
       }
     } catch (err) {
       alert('更新請求失敗：' + err.message);
       // 回滾樂觀更新，還原為修改前的資料
-      setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).map(r => r.id === payload.id ? (previous || r) : r));
+      rollbackRecurringUpdate(payload.id, previous);
     } finally {
       setLoading(false);
     }
@@ -478,7 +525,7 @@ export default function App() {
     setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).map(r => r?.category === catToDelete.name ? { ...r, category: fallbackName } : r));
 
     if (!gasUrl) {
-      showStatus('error', '尚未設定 GAS URL！類別重新歸類只會暫存於畫面，重新整理後將還原。');
+      warnNoGasUrl('recategorize');
       return;
     }
 
@@ -563,7 +610,7 @@ export default function App() {
         breakdown.push({
           id: 'cat_unknown',
           name: '其他',
-          color: '#8b5cf6',
+          color: FALLBACK_CATEGORY_COLOR,
           total: unknownTotal,
           percentage: totalExpense > 0 ? ((unknownTotal / totalExpense) * 100).toFixed(1) : '0.0'
         });
@@ -605,7 +652,7 @@ export default function App() {
   // --- Render ---
   return (
     <div
-      className={`min-h-screen relative bg-canvas text-ink ${activeTab === 'overview' || activeTab === 'transactions' || activeTab === 'settings' || activeTab === 'recurring' ? 'overview-font' : 'font-sans'} p-3 sm:p-6 md:p-8 pb-28 overflow-x-hidden`}
+      className="min-h-screen relative bg-canvas text-ink overview-font p-3 sm:p-6 md:p-8 pb-28 overflow-x-hidden"
       style={{
         backgroundImage: `url(${appBackground})`,
         backgroundSize: 'cover',
@@ -618,25 +665,16 @@ export default function App() {
 
         {/* Header 組件 */}
         <HeaderBar
-          gasUrl={gasUrl}
-          loading={loading}
           currentYear={currentYear}
           currentMonth={currentMonth}
-          onPrevMonth={() => currentMonth === 1 ? (setCurrentYear(y => y - 1), setCurrentMonth(12)) : setCurrentMonth(m => m - 1)}
-          onNextMonth={() => currentMonth === 12 ? (setCurrentYear(y => y + 1), setCurrentMonth(1)) : setCurrentMonth(m => m + 1)}
-          onSelectDate={(year, month) => {
-            setCurrentYear(year);
-            setCurrentMonth(month);
-          }}
+          onPrevMonth={handlePrevMonth}
+          onNextMonth={handleNextMonth}
+          onSelectDate={handleSelectMonth}
         />
 
         {/* 系統狀態提示 */}
         {statusMsg.text && (
-          <div role="status" className={`pixel-card p-3 text-sm flex items-center gap-2 ${
-            statusMsg.type === 'error' ? 'bg-red-50 border-danger text-danger' :
-            statusMsg.type === 'success' ? 'bg-green-50 border-success text-success' :
-            'bg-surface-warm border-ink text-ink-soft'
-          }`}>
+          <div role="status" className={`pixel-card p-3 text-sm flex items-center gap-2 ${statusClass(statusMsg.type)}`}>
             <Clock className={`w-4 h-4 ${statusMsg.type === 'info' ? 'animate-spin' : ''}`} />
             <span>{statusMsg.text}</span>
           </div>
@@ -646,10 +684,10 @@ export default function App() {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             <div className="grid w-full grid-cols-1 sm:grid-cols-2 gap-3">
-              <button onClick={() => setShowAddModal(true)} className="pixel-button-primary group flex w-full items-center justify-center space-x-2 px-6 py-3.5 text-base">
+              <button type="button" onClick={() => setShowAddModal(true)} className="pixel-button-primary group flex w-full items-center justify-center space-x-2 px-6 py-3.5 text-base">
                 <Plus className="w-5 h-5" /><span>新增記帳</span>
               </button>
-              <button onClick={() => setShowRecurringModal(true)} className="pixel-button-accent flex w-full items-center justify-center space-x-2 px-6 py-3.5 text-base">
+              <button type="button" onClick={() => setShowRecurringModal(true)} className="pixel-button-accent flex w-full items-center justify-center space-x-2 px-6 py-3.5 text-base">
                 <RefreshCw className="w-4 h-4" /><span>恆常開支</span>
               </button>
             </div>
@@ -672,45 +710,38 @@ export default function App() {
               categories={categories}
               currentYear={currentYear}
               currentMonth={currentMonth}
-              onMonthSelect={(year, month) => {
-                setCurrentYear(year);
-                setCurrentMonth(month);
-              }}
+              onMonthSelect={handleSelectMonth}
             />
           </div>
         )}
 
         {/* --- 分頁 2: 支帳明細 --- */}
         {activeTab === 'transactions' && (
-          <div className="space-y-6">
-            <TransactionList
-              transactions={filteredTransactions}
-              categories={categories}
-              selectedCategoryFilter={selectedCategoryFilter}
-              onCategoryFilterChange={setSelectedCategoryFilter}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              onEdit={setEditingTransaction}
-              onDelete={handleDeleteTransaction}
-            />
-          </div>
+          <TransactionList
+            transactions={filteredTransactions}
+            categories={categories}
+            selectedCategoryFilter={selectedCategoryFilter}
+            onCategoryFilterChange={setSelectedCategoryFilter}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onEdit={setEditingTransaction}
+            onDelete={handleDeleteTransaction}
+          />
         )}
 
         {/* --- 分頁 3: 恆常開支列表 --- */}
         {activeTab === 'recurring' && (
-          <div className="space-y-6">
-            <RecurringExpenseList
-              recurringExpenses={filteredRecurringExpenses}
-              categories={categories}
-              selectedCategoryFilter={recurringSelectedCategoryFilter}
-              onCategoryFilterChange={setRecurringSelectedCategoryFilter}
-              searchQuery={recurringSearchQuery}
-              onSearchChange={setRecurringSearchQuery}
-              onEdit={setEditingRecurring}
-              onDelete={handleDeleteRecurring}
-              onAdd={() => setShowRecurringModal(true)}
-            />
-          </div>
+          <RecurringExpenseList
+            recurringExpenses={filteredRecurringExpenses}
+            categories={categories}
+            selectedCategoryFilter={recurringSelectedCategoryFilter}
+            onCategoryFilterChange={setRecurringSelectedCategoryFilter}
+            searchQuery={recurringSearchQuery}
+            onSearchChange={setRecurringSearchQuery}
+            onEdit={setEditingRecurring}
+            onDelete={handleDeleteRecurring}
+            onAdd={() => setShowRecurringModal(true)}
+          />
         )}
 
         {activeTab === 'settings' && (
@@ -728,6 +759,7 @@ export default function App() {
       {/* Floating Bottom Navigation */}
       <nav aria-label="主要導覽" className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 pixel-card p-1.5 flex items-center gap-1 z-40">
         <button
+          type="button"
           onClick={() => setActiveTab('overview')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
             activeTab === 'overview'
@@ -739,6 +771,7 @@ export default function App() {
           <span className="hidden sm:inline">總覽</span>
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('transactions')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
             activeTab === 'transactions'
@@ -750,6 +783,7 @@ export default function App() {
           <span className="hidden sm:inline">支帳明細</span>
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('recurring')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
             activeTab === 'recurring'
@@ -761,6 +795,7 @@ export default function App() {
           <span className="hidden sm:inline">恆常開支</span>
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('settings')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
             activeTab === 'settings'
