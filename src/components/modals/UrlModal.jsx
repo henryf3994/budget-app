@@ -5,13 +5,14 @@ import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
 // =========================================================================
 // 📁 src/components/modals/UrlModal.jsx
 // =========================================================================
-function UrlModal({ initialUrl, onClose, onSave }) {
+function UrlModal({ initialUrl, initialToken = '', onClose, onSave }) {
   const [url, setUrl] = useState(initialUrl);
+  const [token, setToken] = useState(initialToken);
   const modalRef = useRef(null);
   useOnClickOutside(modalRef, onClose);
 
   const handleSave = () => {
-    onSave(url.trim());
+    onSave(url.trim(), token.trim());
   };
 
   return (
@@ -35,6 +36,21 @@ function UrlModal({ initialUrl, onClose, onSave }) {
             placeholder="https://script.google.com/macros/s/.../exec"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
+            className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-ink text-xs font-mono focus:outline-none"
+          />
+        </div>
+
+        <p className="text-xs text-muted mb-1">
+          API Token（選填）：如 GAS 端已於 Script Properties 設定 <code className="text-ink">GAS_API_TOKEN</code>，需填寫相同 Token 才能讀寫；可留空。
+        </p>
+        <div className="pixel-border-sm p-0.5 mb-4">
+          <input
+            type="text"
+            placeholder="輸入口令 Token"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            autoComplete="off"
+            spellCheck={false}
             className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-ink text-xs font-mono focus:outline-none"
           />
         </div>

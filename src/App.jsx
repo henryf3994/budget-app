@@ -17,7 +17,7 @@ import appBackground from './assets/background.png';
 import { INITIAL_CATEGORIES, CATEGORY_FILTER_ALL, FALLBACK_CATEGORY_COLOR } from './utils/constants.js';
 import { ensureValidCategories, isValidUrl, normalizePaymentMethod, sanitizeRecurring, sanitizeText, sanitizeTransaction, validateRecurringForm, validateTransactionForm } from './utils/validation.js';
 import { safeGetItem, safeSetItem } from './utils/storage.js';
-import { fetchJson, postToGAS } from './utils/gasApi.js';
+import { fetchJson, postToGAS, buildGasUrl } from './utils/gasApi.js';
 
 // 尚未設定同步網址時的提示訊息（依操作類型區分，集中管理避免字面量重複）
 const NO_GAS_URL_MESSAGES = {
@@ -41,6 +41,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('overview');
   // 以 safeGetItem 包裝，儲存空間被封鎖時不再於啟動時當機
   const [gasUrl, setGasUrl] = useState(() => safeGetItem('gas_app_url', ''));
+  // 選用的 API Token（配合 GAS 端 GAS_API_TOKEN Script Property），端點授權用；未設定即公開
+  const [gasApiToken, setGasApiToken] = useState(() => safeGetItem('gas_api_token', ''));
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
 
@@ -150,7 +152,7 @@ export default function App() {
   }, []);
 
   // --- API 請求與數據處理 ---
-  const loadDataFromGAS = async (url = gasUrl) => {
+  const loadDataFromGAS = async (url = gasUrl, token = gasApiToken) => {
     if (!url) {
       setShowUrlModal(true);
       return;
@@ -169,7 +171,7 @@ export default function App() {
     showStatus('info', '正在連線至 Google Sheets 讀取數據...');
     try {
       // 改用 fetchJson 統一檢查 HTTP 狀態碼並確保回應為 JSON
-      const json = await fetchJson(url, { signal: controller.signal });
+      const json = await fetchJson(buildGasUrl(url, token), { signal: controller.signal });
 
       // 若期間已有較新的請求或樂觀更新，丟棄此過期回應
       if (requestId !== loadRequestIdRef.current) return;
@@ -214,7 +216,7 @@ export default function App() {
     }
   };
 
-  const handleSaveUrl = (url) => {
+  const handleSaveUrl = (url, token = '') => {
     const normalizedUrl = sanitizeText(url);
     if (!normalizedUrl) {
       showStatus('error', '請先輸入 GAS URL');
@@ -226,13 +228,18 @@ export default function App() {
       return;
     }
 
+    const normalizedToken = sanitizeText(token);
     setGasUrl(normalizedUrl);
+    setGasApiToken(normalizedToken);
     // 以 safeSetItem 包裝，儲存空間被封鎖時不再拋錯
     if (!safeSetItem('gas_app_url', normalizedUrl)) {
       console.warn('無法寫入 localStorage（gas_app_url），網址將不會在下次開啟時保留');
     }
+    if (!safeSetItem('gas_api_token', normalizedToken)) {
+      console.warn('無法寫入 localStorage（gas_api_token），Token 將不會在下次開啟時保留');
+    }
     setShowUrlModal(false);
-    loadDataFromGAS(normalizedUrl);
+    loadDataFromGAS(normalizedUrl, normalizedToken);
   };
 
   // 更新失敗時還原單筆交易（previous 為修改前的原資料；找不到原資料時則移除該列）
@@ -279,7 +286,7 @@ export default function App() {
 
     setLoading(true);
     try {
-      const resJson = await postToGAS(gasUrl, payload);
+      const resJson = await postToGAS(gasUrl, payload, gasApiToken);
       if (resJson.status === 'success') await loadDataFromGAS();
       else {
         alert('寫入失敗：' + resJson.message);
@@ -332,7 +339,7 @@ export default function App() {
 
     setLoading(true);
     try {
-      const resJson = await postToGAS(gasUrl, payload);
+      const resJson = await postToGAS(gasUrl, payload, gasApiToken);
       if (resJson.status === 'success') await loadDataFromGAS();
       else {
         alert('更新失敗：' + resJson.message);
@@ -358,7 +365,7 @@ export default function App() {
     if (gasUrl) {
       setLoading(true);
       try {
-        const resJson = await postToGAS(gasUrl, { action: 'deleteTransaction', id: id });
+        const resJson = await postToGAS(gasUrl, { action: 'deleteTransaction', id: id }, gasApiToken);
         if (resJson.status !== 'success') { alert('刪除失敗：' + resJson.message); await loadDataFromGAS(); }
       } catch (err) {
         alert('刪除請求失敗：' + err.message); await loadDataFromGAS();
@@ -400,7 +407,7 @@ export default function App() {
 
     setLoading(true);
     try {
-      const resJson = await postToGAS(gasUrl, payload);
+      const resJson = await postToGAS(gasUrl, payload, gasApiToken);
       if (resJson.status === 'success') await loadDataFromGAS();
       else {
         alert('恆常開支寫入失敗：' + resJson.message);
@@ -426,7 +433,7 @@ export default function App() {
     if (gasUrl) {
       setLoading(true);
       try {
-        const resJson = await postToGAS(gasUrl, { action: 'deleteRecurring', id: id });
+        const resJson = await postToGAS(gasUrl, { action: 'deleteRecurring', id: id }, gasApiToken);
         if (resJson.status !== 'success') { alert('刪除失敗：' + resJson.message); await loadDataFromGAS(); }
       } catch (err) {
         alert('刪除請求失敗：' + err.message); await loadDataFromGAS();
@@ -476,7 +483,7 @@ export default function App() {
 
     setLoading(true);
     try {
-      const resJson = await postToGAS(gasUrl, payload);
+      const resJson = await postToGAS(gasUrl, payload, gasApiToken);
       if (resJson.status === 'success') await loadDataFromGAS();
       else {
         alert('更新失敗：' + resJson.message);
@@ -533,10 +540,10 @@ export default function App() {
     setLoading(true);
     try {
       const transactionResults = affectedTransactions.map(t =>
-        postToGAS(gasUrl, { action: 'editTransaction', ...t, category: fallbackName })
+        postToGAS(gasUrl, { action: 'editTransaction', ...t, category: fallbackName }, gasApiToken)
       );
       const recurringResults = affectedRecurring.map(r =>
-        postToGAS(gasUrl, { action: 'editRecurring', ...r, category: fallbackName })
+        postToGAS(gasUrl, { action: 'editRecurring', ...r, category: fallbackName }, gasApiToken)
       );
       const results = await Promise.allSettled([...transactionResults, ...recurringResults]);
       const failedCount = results.filter(r => r.status === 'rejected' || r.value?.status !== 'success').length;
@@ -747,6 +754,7 @@ export default function App() {
         {activeTab === 'settings' && (
           <SettingsPage
             gasUrl={gasUrl}
+            hasToken={!!gasApiToken}
             loading={loading}
             onRefresh={() => loadDataFromGAS()}
             onOpenUrlModal={() => setShowUrlModal(true)}
@@ -809,7 +817,7 @@ export default function App() {
       </nav>
 
       {/* --- Modals --- */}
-      {showUrlModal && <UrlModal initialUrl={gasUrl} onClose={() => setShowUrlModal(false)} onSave={handleSaveUrl} />}
+      {showUrlModal && <UrlModal initialUrl={gasUrl} initialToken={gasApiToken} onClose={() => setShowUrlModal(false)} onSave={handleSaveUrl} />}
       {showCategoryModal && <CategoryModal categories={categories} onClose={() => setShowCategoryModal(false)} onAddCategory={handleAddCategory} onDeleteCategory={handleDeleteCategory} />}
       {showRecurringModal && <RecurringModal categories={categories} onClose={() => setShowRecurringModal(false)} onAdd={handleAddRecurring} loading={loading} />}
       {editingRecurring && <RecurringModal categories={categories} initialRecurring={editingRecurring} onClose={() => setEditingRecurring(null)} onUpdate={handleUpdateRecurring} loading={loading} />}

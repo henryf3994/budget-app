@@ -1,7 +1,7 @@
 import React from 'react';
 import { Database, RefreshCw, Settings } from 'lucide-react';
 
-export default function SettingsPage({ gasUrl, loading, onRefresh, onOpenUrlModal, onOpenCategoryModal }) {
+export default function SettingsPage({ gasUrl, hasToken = false, loading, onRefresh, onOpenUrlModal, onOpenCategoryModal }) {
   return (
     <section className="overview-font space-y-6">
       <div className="pixel-card border-4 bg-surface-warm p-5 shadow-pixel-lg sm:p-6">
@@ -52,6 +52,9 @@ export default function SettingsPage({ gasUrl, loading, onRefresh, onOpenUrlModa
               ) : (
                 '尚未設定'
               )}
+              <span className={`block mt-1 text-xs ${hasToken ? 'text-success' : 'text-danger'}`}>
+                {hasToken ? '✓ 已設定 API Token 驗證' : '未設定 API Token（端點為公開狀態）'}
+              </span>
             </div>
           </button>
 
