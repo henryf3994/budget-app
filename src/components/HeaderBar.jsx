@@ -15,6 +15,7 @@ const MONTH_LABELS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 // 上／下月導航按鈕的共用樣式
 const NAV_BUTTON_CLASS = 'p-2 hover:bg-surface-warm rounded-pixel-sm text-ink-soft hover:text-ink transition';
+const MONTH_PICKER_BUTTON_CLASS = 'p-1 hover:bg-surface-warm rounded text-ink-soft hover:text-ink';
 
 export default function HeaderBar({
   currentYear,
@@ -91,7 +92,7 @@ export default function HeaderBar({
                   <button
                     type="button"
                     onClick={() => setPickerYear(prev => prev - 1)}
-                    className="p-1 hover:bg-surface-warm rounded text-ink-soft hover:text-ink"
+                    className={MONTH_PICKER_BUTTON_CLASS}
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -99,7 +100,7 @@ export default function HeaderBar({
                   <button
                     type="button"
                     onClick={() => setPickerYear(prev => prev + 1)}
-                    className="p-1 hover:bg-surface-warm rounded text-ink-soft hover:text-ink"
+                    className={MONTH_PICKER_BUTTON_CLASS}
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>

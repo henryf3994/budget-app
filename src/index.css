@@ -252,6 +252,22 @@ textarea:focus {
     clip-path: none;
   }
 
+  .payer-option-selected::before {
+    background: var(--payer-border-color);
+  }
+
+  .payer-option-selected::after {
+    inset: 4px;
+  }
+
+  .payer-option-selected-ysk {
+    --payer-border-color: #059669;
+  }
+
+  .payer-option-selected-fmh {
+    --payer-border-color: #7c3aed;
+  }
+
 
   /*
    * Primary CTA

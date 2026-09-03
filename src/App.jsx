@@ -15,6 +15,7 @@ import AddTransactionModal from './components/modals/AddTransactionModal';
 import EditTransactionModal from './components/modals/EditTransactionModal';
 import appBackground from './assets/background.png';
 import { INITIAL_CATEGORIES, CATEGORY_FILTER_ALL, FALLBACK_CATEGORY_COLOR } from './utils/constants.js';
+import { matchesCategoryFilter, matchesSearchQuery } from './utils/filters.js';
 import { ensureValidCategories, isValidUrl, normalizePaymentMethod, sanitizeRecurring, sanitizeText, sanitizeTransaction, validateRecurringForm, validateTransactionForm } from './utils/validation.js';
 import { safeGetItem, safeSetItem } from './utils/storage.js';
 import { fetchJson, postToGAS, buildGasUrl } from './utils/gasApi.js';
@@ -105,6 +106,30 @@ export default function App() {
 
   // 尚未設定同步網址時的統一警告（訊息內容集中在模組頂層的 NO_GAS_URL_MESSAGES）
   const warnNoGasUrl = (key) => showStatus('error', NO_GAS_URL_MESSAGES[key]);
+
+  const createTempId = (prefix) => `${prefix}${Date.now()}`;
+
+  const normalizeDayOfMonth = (value) => {
+    const day = parseInt(value, 10);
+    return Number.isNaN(day) ? 1 : day;
+  };
+
+  const buildTransactionPayload = (formData, action) => ({
+    action,
+    ...formData,
+    title: sanitizeText(formData.title),
+    paymentMethod: normalizePaymentMethod(formData),
+    amount: Number(formData.amount)
+  });
+
+  const buildRecurringPayload = (formData, action) => ({
+    action,
+    ...formData,
+    title: sanitizeText(formData.title),
+    paymentMethod: normalizePaymentMethod(formData),
+    amount: Number(formData.amount),
+    dayOfMonth: normalizeDayOfMonth(formData.dayOfMonth)
+  });
 
   // --- 月份導覽（HeaderBar 與趨勢圖共用，避免重複的內聯箭頭函式） ---
   const handlePrevMonth = () => {
@@ -263,18 +288,12 @@ export default function App() {
       return;
     }
 
-    const payload = {
-      action: 'addTransaction',
-      ...formData,
-      title: sanitizeText(formData.title),
-      paymentMethod: normalizePaymentMethod(formData),
-      amount: Number(formData.amount)
-    };
+    const payload = buildTransactionPayload(formData, 'addTransaction');
 
     // 使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
     loadRequestIdRef.current += 1;
 
-    const tempId = 'temp_' + Date.now();
+    const tempId = createTempId('temp_');
     setTransactions(prev => [{ ...payload, id: tempId }, ...(Array.isArray(prev) ? prev : [])]);
     setShowAddModal(false);
 
@@ -314,13 +333,7 @@ export default function App() {
       return;
     }
 
-    const payload = {
-      action: 'editTransaction',
-      ...formData,
-      title: sanitizeText(formData.title),
-      paymentMethod: normalizePaymentMethod(formData),
-      amount: Number(formData.amount)
-    };
+    const payload = buildTransactionPayload(formData, 'editTransaction');
 
     // 先記住原資料，更新失敗時用於回滾，避免畫面與伺服器資料不同步
     const previous = (Array.isArray(transactions) ? transactions : []).find(t => t?.id === payload.id);
@@ -382,21 +395,12 @@ export default function App() {
       return;
     }
 
-    const dayOfMonth = parseInt(formData.dayOfMonth, 10);
-    const safeDayOfMonth = Number.isNaN(dayOfMonth) ? 1 : dayOfMonth;
-    const payload = {
-      action: 'addRecurring',
-      ...formData,
-      title: sanitizeText(formData.title),
-      paymentMethod: normalizePaymentMethod(formData),
-      amount: Number(formData.amount),
-      dayOfMonth: safeDayOfMonth
-    };
+    const payload = buildRecurringPayload(formData, 'addRecurring');
 
     // 使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
     loadRequestIdRef.current += 1;
 
-    const tempId = 'rec_' + Date.now();
+    const tempId = createTempId('rec_');
     setRecurringExpenses(prev => [...(Array.isArray(prev) ? prev : []), { ...payload, id: tempId }]);
 
     // 尚未設定同步網址時明確警告，避免使用者以為資料已保存
@@ -455,16 +459,7 @@ export default function App() {
       return;
     }
 
-    const dayOfMonth = parseInt(formData.dayOfMonth, 10);
-    const safeDayOfMonth = Number.isNaN(dayOfMonth) ? 1 : dayOfMonth;
-    const payload = {
-      action: 'editRecurring',
-      ...formData,
-      title: sanitizeText(formData.title),
-      paymentMethod: normalizePaymentMethod(formData),
-      amount: Number(formData.amount),
-      dayOfMonth: safeDayOfMonth
-    };
+    const payload = buildRecurringPayload(formData, 'editRecurring');
 
     // 先記住原資料，更新失敗時用於回滾
     const previous = (Array.isArray(recurringExpenses) ? recurringExpenses : []).find(r => r?.id === payload.id);
@@ -630,14 +625,8 @@ export default function App() {
   const filteredTransactions = useMemo(() => {
     return currentMonthTransactions.filter(t => {
       if (!t) return false;
-      const matchCategory = selectedCategoryFilter === CATEGORY_FILTER_ALL || t.category === selectedCategoryFilter;
-      const q = searchQuery.toLowerCase();
-      const matchSearch = !q ||
-        (t.title && String(t.title).toLowerCase().includes(q)) ||
-        (t.payer && String(t.payer).toLowerCase().includes(q)) ||
-        (t.paymentMethod && String(t.paymentMethod).toLowerCase().includes(q)) ||
-        (t.note && String(t.note).toLowerCase().includes(q));
-      return matchCategory && matchSearch;
+      return matchesCategoryFilter(selectedCategoryFilter, t.category, CATEGORY_FILTER_ALL)
+        && matchesSearchQuery(searchQuery, [t.title, t.payer, t.paymentMethod, t.note]);
     });
   }, [currentMonthTransactions, selectedCategoryFilter, searchQuery]);
 
@@ -645,14 +634,8 @@ export default function App() {
     if (!Array.isArray(recurringExpenses)) return [];
     return recurringExpenses.filter(r => {
       if (!r) return false;
-      const matchCategory = recurringSelectedCategoryFilter === CATEGORY_FILTER_ALL || r.category === recurringSelectedCategoryFilter;
-      const q = recurringSearchQuery.toLowerCase();
-      const matchSearch = !q ||
-        (r.title && String(r.title).toLowerCase().includes(q)) ||
-        (r.payer && String(r.payer).toLowerCase().includes(q)) ||
-        (r.paymentMethod && String(r.paymentMethod).toLowerCase().includes(q)) ||
-        (r.note && String(r.note).toLowerCase().includes(q));
-      return matchCategory && matchSearch;
+      return matchesCategoryFilter(recurringSelectedCategoryFilter, r.category, CATEGORY_FILTER_ALL)
+        && matchesSearchQuery(recurringSearchQuery, [r.title, r.payer, r.paymentMethod, r.note]);
     });
   }, [recurringExpenses, recurringSelectedCategoryFilter, recurringSearchQuery]);
 

@@ -1,14 +1,21 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { X, RefreshCw, Calendar } from 'lucide-react';
-import { INITIAL_CATEGORIES, PAYERS, PAYMENT_METHODS, getLocalDateString, getPayerStyle, getPaymentMethodStyle } from '../../utils/constants.js';
+import { INITIAL_CATEGORIES, PAYERS, PAYMENT_METHODS, getLocalDateString, getPaymentMethodStyle } from '../../utils/constants.js';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
-import { normalizePaymentMethod, sanitizeText, validateTransactionFields } from '../../utils/validation.js';
+import { buildSubmittedFormData } from '../../utils/formHelpers.js';
+import { validateTransactionFields } from '../../utils/validation.js';
 import MiniCalendar from '../MiniCalendar.jsx';
+import fmhAvatar from '../../assets/fmh.png';
+import yskAvatar from '../../assets/ysk.png';
 
 // =========================================================================
 // 📁 src/components/modals/AddTransactionModal.jsx
 // =========================================================================
 function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
+  const payerAvatars = {
+    YSK: yskAvatar,
+    FMH: fmhAvatar
+  };
   const safeCategories = Array.isArray(categories) ? categories : [];
   const [formData, setFormData] = useState({
     date: getLocalDateString(),
@@ -42,12 +49,7 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
       return;
     }
 
-    const finalData = {
-      ...formData,
-      title: sanitizeText(formData.title),
-      paymentMethod: normalizePaymentMethod(formData)
-    };
-    onSubmit(finalData);
+    onSubmit(buildSubmittedFormData(formData));
   };
 
   return (
@@ -175,13 +177,18 @@ function AddTransactionModal({ categories, onClose, onSubmit, loading }) {
                   key={p}
                   type="button"
                   onClick={() => setFormData({ ...formData, payer: p })}
-                  className={`pixel-border-sm py-2 px-3 rounded-xl border text-sm font-semibold transition ${
+                  className={`pixel-border-sm py-2 px-3 rounded-xl text-sm font-semibold transition ${
                     formData.payer === p
-                      ? getPayerStyle(p, 'button')
+                      ? `payer-option-selected bg-surface-soft ${p === 'YSK' ? 'payer-option-selected-ysk' : 'payer-option-selected-fmh'}`
                       : 'bg-surface-soft border-2 border-ink text-muted hover:bg-surface-warm'
                   }`}
+                  aria-label={`付款人 ${p}`}
                 >
-                  {p}
+                  <img
+                    className={`h-12 w-full object-contain ${p === 'FMH' ? 'scale-110' : ''}`}
+                    src={payerAvatars[p]}
+                    alt={p}
+                  />
                 </button>
               ))}
             </div>

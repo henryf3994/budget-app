@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { X, Edit3, Calendar } from 'lucide-react';
 import { PAYERS, PAYMENT_METHODS, getPayerStyle, getPaymentMethodStyle } from '../../utils/constants.js';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
-import { normalizePaymentMethod, sanitizeText, validateTransactionFields } from '../../utils/validation.js';
+import { buildSubmittedFormData, resolveCustomPaymentState } from '../../utils/formHelpers.js';
+import { validateTransactionFields } from '../../utils/validation.js';
 import MiniCalendar from '../MiniCalendar.jsx';
 
 // =========================================================================
@@ -11,13 +12,10 @@ import MiniCalendar from '../MiniCalendar.jsx';
 function EditTransactionModal({ transaction, categories, onClose, onSubmit, loading }) {
   const safeCategories = Array.isArray(categories) ? categories : [];
   const [formData, setFormData] = useState(() => {
-    const isCustomPayment = !!transaction?.paymentMethod && !PAYMENT_METHODS.includes(transaction.paymentMethod);
-
+    const resolved = resolveCustomPaymentState(transaction || {});
     return {
       ...transaction,
-      paymentMethod: isCustomPayment ? PAYMENT_METHODS[0] : (transaction?.paymentMethod || PAYMENT_METHODS[0]),
-      customPaymentMethod: isCustomPayment ? transaction.paymentMethod : '',
-      isCustomPayment
+      ...resolved
     };
   });
   const [fieldErrors, setFieldErrors] = useState({});
@@ -36,13 +34,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
       return;
     }
 
-    const finalData = {
-      ...formData,
-      title: sanitizeText(formData.title),
-      paymentMethod: normalizePaymentMethod(formData)
-    };
-
-    onSubmit(finalData);
+    onSubmit(buildSubmittedFormData(formData));
   };
 
   return (

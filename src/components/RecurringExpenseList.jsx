@@ -4,8 +4,8 @@ import {
   getPayerStyle,
   getPaymentMethodStyle,
   CATEGORY_FILTER_ALL,
-  FALLBACK_CATEGORY_COLOR,
 } from '../utils/constants.js';
+import { buildCategoryColorMap, formatMoney } from '../utils/listHelpers.js';
 
 // =========================================================================
 // 📁 src/components/RecurringExpenseList.jsx
@@ -24,18 +24,11 @@ function RecurringExpenseList({
   onAdd,
 }) {
   const categoryColorById = useMemo(
-    () => new Map(categories.map(c => [c.name, c.color])),
+    () => buildCategoryColorMap(categories),
     [categories]
   );
 
-  const getCategoryColor = (catName) =>
-    categoryColorById.get(catName) || FALLBACK_CATEGORY_COLOR;
-
-  const formatAmount = (amount) => {
-    const value = Number(amount);
-    const safe = Number.isFinite(value) ? value : 0;
-    return safe.toFixed(2);
-  };
+  const getCategoryColor = (catName) => categoryColorById.get(catName) || categoryColorById.get('其他');
 
   return (
     <div className="pixel-card bg-surface overflow-hidden">
@@ -140,7 +133,7 @@ function RecurringExpenseList({
 
                   <div className="flex items-center justify-end gap-3 shrink-0">
                     <div className="font-pixel text-pixel-lg text-ink text-left tabular-nums break-words">
-                      - HK$ {formatAmount(item.amount)}
+                      - HK$ {formatMoney(item.amount, 2, 2)}
                     </div>
 
                     <div className="flex items-center space-x-1 border-l-2 border-ink/20 pl-3">

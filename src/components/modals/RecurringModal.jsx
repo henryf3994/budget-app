@@ -1,8 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { X, RefreshCw } from 'lucide-react';
-import { PAYERS, PAYMENT_METHODS, getPayerStyle, getPaymentMethodStyle } from '../../utils/constants.js';
+import { PAYERS, PAYMENT_METHODS, getPaymentMethodStyle } from '../../utils/constants.js';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
-import { normalizePaymentMethod, sanitizeText, validateRecurringFields } from '../../utils/validation.js';
+import { buildSubmittedFormData, resolveCustomPaymentState } from '../../utils/formHelpers.js';
+import { validateRecurringFields } from '../../utils/validation.js';
+import fmhAvatar from '../../assets/fmh.png';
+import yskAvatar from '../../assets/ysk.png';
 
 // =========================================================================
 // 📁 src/components/modals/RecurringModal.jsx
@@ -17,6 +20,10 @@ function RecurringModal({
 }) {
   const modalRef = useRef(null);
   useOnClickOutside(modalRef, onClose);
+  const payerAvatars = {
+    YSK: yskAvatar,
+    FMH: fmhAvatar
+  };
 
   // 安全取得第一個分類名稱
   const safeCategories = Array.isArray(categories) ? categories : [];
@@ -45,15 +52,15 @@ function RecurringModal({
   const createInitialRecurring = () => {
     const item = initialRecurring;
     if (!item) return createEmptyRecurring();
-    const isCustom = !!item.paymentMethod && !PAYMENT_METHODS.includes(item.paymentMethod);
+    const resolved = resolveCustomPaymentState(item);
     return {
       amount: String(item.amount ?? ''),
       category: safeCategories.some(c => c.name === item.category) ? item.category : defaultCategory,
       title: item.title || '',
       payer: item.payer || defaultPayer,
-      paymentMethod: isCustom ? defaultPaymentMethod : (item.paymentMethod || defaultPaymentMethod),
-      customPaymentMethod: isCustom ? item.paymentMethod : '',
-      isCustomPayment: isCustom,
+      paymentMethod: resolved.paymentMethod,
+      customPaymentMethod: resolved.customPaymentMethod,
+      isCustomPayment: resolved.isCustomPayment,
       note: item.note || '',
       frequency: item.frequency || 'Monthly',
       dayOfMonth: item.dayOfMonth || 1
@@ -73,11 +80,7 @@ function RecurringModal({
       return;
     }
 
-    const finalData = {
-      ...newRec,
-      title: sanitizeText(newRec.title),
-      paymentMethod: normalizePaymentMethod(newRec)
-    };
+    const finalData = buildSubmittedFormData(newRec);
 
     if (isEditing) {
       // 保留原本的 id（以及 initialRecurring 上的其他唯讀欄位）
@@ -171,13 +174,18 @@ function RecurringModal({
                   key={p}
                   type="button"
                   onClick={() => setNewRec({ ...newRec, payer: p })}
-                  className={`pixel-border-sm py-2 px-3 rounded-xl border text-sm font-semibold transition ${
+                  className={`pixel-border-sm py-2 px-3 rounded-xl text-sm font-semibold transition ${
                     newRec.payer === p
-                      ? getPayerStyle(p, 'button')
+                      ? `payer-option-selected bg-surface-soft ${p === 'YSK' ? 'payer-option-selected-ysk' : 'payer-option-selected-fmh'}`
                       : 'bg-surface-soft border-2 border-ink text-muted hover:bg-surface-warm'
                   }`}
+                  aria-label={`付款人 ${p}`}
                 >
-                  {p}
+                  <img
+                    className={`h-12 w-full object-contain ${p === 'FMH' ? 'scale-110' : ''}`}
+                    src={payerAvatars[p]}
+                    alt={p}
+                  />
                 </button>
               ))}
             </div>
