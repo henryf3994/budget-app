@@ -1,15 +1,21 @@
 import React, { useState, useRef } from 'react';
 import { X, Edit3, Calendar } from 'lucide-react';
-import { PAYERS, PAYMENT_METHODS, getPayerStyle, getPaymentMethodStyle } from '../../utils/constants.js';
+import { PAYERS, PAYMENT_METHODS, getPaymentMethodStyle } from '../../utils/constants.js';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
 import { buildSubmittedFormData, resolveCustomPaymentState } from '../../utils/formHelpers.js';
 import { validateTransactionFields } from '../../utils/validation.js';
 import MiniCalendar from '../MiniCalendar.jsx';
+import fmhAvatar from '../../assets/fmh.png';
+import yskAvatar from '../../assets/ysk.png';
 
 // =========================================================================
 // 📁 src/components/modals/EditTransactionModal.jsx
 // =========================================================================
 function EditTransactionModal({ transaction, categories, onClose, onSubmit, loading }) {
+  const payerAvatars = {
+    YSK: yskAvatar,
+    FMH: fmhAvatar
+  };
   const safeCategories = Array.isArray(categories) ? categories : [];
   const [formData, setFormData] = useState(() => {
     const resolved = resolveCustomPaymentState(transaction || {});
@@ -142,13 +148,18 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
                   key={p}
                   type="button"
                   onClick={() => setFormData({ ...formData, payer: p })}
-                  className={`pixel-border-sm py-2 px-3 rounded-xl border text-sm font-semibold transition ${
+                  className={`pixel-border-sm py-2 px-3 rounded-xl text-sm font-semibold transition ${
                     formData.payer === p
-                      ? getPayerStyle(p, 'button')
+                      ? `payer-option-selected bg-surface-soft ${p === 'YSK' ? 'payer-option-selected-ysk' : 'payer-option-selected-fmh'}`
                       : 'bg-surface-soft border-2 border-ink text-muted hover:bg-surface-warm'
                   }`}
+                  aria-label={`付款人 ${p}`}
                 >
-                  {p}
+                  <img
+                    className={`h-12 w-full object-contain ${p === 'FMH' ? 'scale-110' : ''}`}
+                    src={payerAvatars[p]}
+                    alt={p}
+                  />
                 </button>
               ))}
             </div>

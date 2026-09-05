@@ -15,6 +15,8 @@ function TransactionList({
   categories,
   selectedCategoryFilter,
   onCategoryFilterChange,
+  transactionSort,
+  onTransactionSortChange,
   searchQuery,
   onSearchChange,
   onEdit,
@@ -67,6 +69,17 @@ function TransactionList({
               {categories.map(c => (
                 <option key={c.id} value={c.name}>{c.name}</option>
               ))}
+            </select>
+          </div>
+          <div className="pixel-border-sm p-0.5">
+            <select
+              aria-label="排序交易"
+              value={transactionSort}
+              onChange={(e) => onTransactionSortChange(e.target.value)}
+              className="relative z-0 w-full bg-surface-soft border-0 rounded-none text-ink text-sm px-3 py-2 focus:outline-none focus:border-primary"
+            >
+              <option value="date-desc">最新付款日期</option>
+              <option value="amount-desc">付款金額</option>
             </select>
           </div>
         </div>

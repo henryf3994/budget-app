@@ -74,6 +74,7 @@ export default function App() {
   // --- Filter States ---
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState(CATEGORY_FILTER_ALL);
+  const [transactionSort, setTransactionSort] = useState('date-desc');
 
   // 恆常開支列表專用的篩選／搜尋狀態，與交易明細的篩選各自獨立
   const [recurringSearchQuery, setRecurringSearchQuery] = useState('');
@@ -623,12 +624,27 @@ export default function App() {
   }, [currentMonthTransactions, categories, totalExpense]);
 
   const filteredTransactions = useMemo(() => {
-    return currentMonthTransactions.filter(t => {
+    const filtered = currentMonthTransactions.filter(t => {
       if (!t) return false;
       return matchesCategoryFilter(selectedCategoryFilter, t.category, CATEGORY_FILTER_ALL)
         && matchesSearchQuery(searchQuery, [t.title, t.payer, t.paymentMethod, t.note]);
     });
-  }, [currentMonthTransactions, selectedCategoryFilter, searchQuery]);
+
+    return filtered
+      .map((transaction, index) => ({ transaction, index }))
+      .sort((a, b) => {
+        const dateComparison = String(b.transaction.date || '').slice(0, 10)
+          .localeCompare(String(a.transaction.date || '').slice(0, 10));
+
+        if (transactionSort === 'amount-desc') {
+          const amountComparison = (Number(b.transaction.amount) || 0) - (Number(a.transaction.amount) || 0);
+          return amountComparison || dateComparison || a.index - b.index;
+        }
+
+        return dateComparison || a.index - b.index;
+      })
+      .map(({ transaction }) => transaction);
+  }, [currentMonthTransactions, selectedCategoryFilter, searchQuery, transactionSort]);
 
   const filteredRecurringExpenses = useMemo(() => {
     if (!Array.isArray(recurringExpenses)) return [];
@@ -712,6 +728,8 @@ export default function App() {
             categories={categories}
             selectedCategoryFilter={selectedCategoryFilter}
             onCategoryFilterChange={setSelectedCategoryFilter}
+            transactionSort={transactionSort}
+            onTransactionSortChange={setTransactionSort}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onEdit={setEditingTransaction}
