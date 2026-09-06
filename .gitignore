@@ -1,5 +1,14 @@
 node_modules/
 dist/
+.vite/
+coverage/
+
+# Local configuration and logs
+.env
+.env.*
+!.env.example
+*.local
+*.log
 
 # macOS
 .DS_Store
