@@ -37,6 +37,17 @@ const statusClass = (type) =>
       ? 'bg-green-50 border-success text-success'
       : 'bg-surface-warm border-ink text-ink-soft';
 
+const readCachedData = (key, sanitizer) => {
+  try {
+    const saved = safeGetItem(key, '');
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed.map(sanitizer).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+};
+
 export default function App() {
   // --- Global States ---
   const [activeTab, setActiveTab] = useState('overview');
@@ -47,8 +58,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
 
-  const [transactions, setTransactions] = useState([]);
-  const [recurringExpenses, setRecurringExpenses] = useState([]);
+  const [transactions, setTransactions] = useState(() => readCachedData('app_transactions_cache', sanitizeTransaction));
+  const [recurringExpenses, setRecurringExpenses] = useState(() => readCachedData('app_recurring_cache', sanitizeRecurring));
   const [categories, setCategories] = useState(() => {
     try {
       // 以 safeGetItem 包裝，儲存空間被封鎖時回傳 fallback
@@ -160,6 +171,18 @@ export default function App() {
       console.warn('無法寫入 localStorage（app_categories），類別設定可能不會被保存');
     }
   }, [categories]);
+
+    useEffect(() => {
+      if (!safeSetItem('app_transactions_cache', JSON.stringify(transactions))) {
+        console.warn('無法寫入 localStorage（app_transactions_cache），交易資料可能不會被保存');
+      }
+    }, [transactions]);
+
+    useEffect(() => {
+      if (!safeSetItem('app_recurring_cache', JSON.stringify(recurringExpenses))) {
+        console.warn('無法寫入 localStorage（app_recurring_cache），恆常開支可能不會被保存');
+      }
+    }, [recurringExpenses]);
 
   useEffect(() => {
     // StrictMode 下初始 effect 會被執行兩次，以 ref 確保只載入一次
