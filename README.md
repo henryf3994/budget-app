@@ -137,7 +137,22 @@ src/
 { "status": "error",   "message": "未授權的請求" }
 ```
 
-前端僅在 `status === 'success'` 時重新拉取資料；失敗或網路錯誤時會顯示訊息並回滾樂觀更新。
+寫入採樂觀更新（optimistic update）：先在畫面套用變更，再送出 POST。
+
+- **成功時不再阻塞等待重新拉取**：`addTransaction` / `addRecurring` 因 `id` 由 GAS 產生，會在寫入
+  成功後安排一次**背景靜默重載**（延遲 400ms、會合併短時間內的多筆寫入）補回正式 `id`；
+  `editTransaction` / `editRecurring` / `delete*` 因 `id` 已知、樂觀更新即為最終結果，成功時完全不發 GET。
+- **失敗或網路錯誤時**會顯示訊息並回滾樂觀更新，必要時重新同步。
+
+> 效能備註：原本每次寫入成功都再 `await` 一次 GET，等於每個操作連續呼叫兩次 GAS `/exec`，
+> 是同步緩慢（10–20 秒）的主因。前端已改為不在寫入路徑上阻塞等待第二趟請求。
+> 所有 GAS 請求預設 20 秒逾時（`utils/gasApi.js` 的 `GAS_REQUEST_TIMEOUT_MS`），逾時會中止請求並
+> 顯示可讀訊息，避免 UI 一直卡在載入中。
+>
+> 另外，「讀取」與「寫入」的忙碌狀態是分開的：`loading` 只代表重新整理／載入試算表，
+> `submitting`（`App.jsx`）才是表單送出中的狀態，且只有各 Modal 的送出鈕綁定 `submitting`。
+> 若兩者共用同一個旗標，初始化或手動重新整理（可能長達 10–20 秒）期間開啟新增／編輯視窗時，
+> 送出鈕會一直是 disabled、看起來像壞掉沒反應。
 
 > **注意**：`google_apps_script`（GAS 後端，含 `doGet` / `doPost` / `processRecurringExpenses`）
 > 目前被 `.gitignore` 忽略、未納入版控。Token 透過 GAS Script Properties 提供，不寫在程式碼中；

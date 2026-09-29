@@ -45,6 +45,10 @@ const NO_GAS_URL_MESSAGES = {
   recategorize: '尚未設定 GAS URL！類別重新歸類只會暫存於畫面，重新整理後將還原。'
 };
 
+// 寫入成功後背景重載的延遲（毫秒）。短延遲即可合併連續寫入，
+// 又能及時把 GAS 產生的正式 id 帶回前端。
+const SILENT_REFRESH_DEBOUNCE_MS = 400;
+
 // 依狀態訊息類型回傳對應的樣式類別
 const statusClass = type =>
   type === 'error'
@@ -71,7 +75,11 @@ export default function App() {
   const [gasUrl, setGasUrl] = useState(() => safeGetItem(STORAGE_KEYS.gasUrl, ''));
   // 選用的 API Token（配合 GAS 端 GAS_API_TOKEN Script Property），端點授權用；未設定即公開
   const [gasApiToken, setGasApiToken] = useState(() => safeGetItem(STORAGE_KEYS.gasApiToken, ''));
+  // 讀取／重新整理的載入狀態（只用於全域提示與「重新整理」按鈕）
   const [loading, setLoading] = useState(false);
+  // 送出表單（寫入）的狀態；刻意與上面的讀取 loading 分開，
+  // 否則單純重新整理試算表（可能長達 10–20 秒）也會把新增／編輯視窗的送出鈕鎖住。
+  const [submitting, setSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
 
   const [transactions, setTransactions] = useState(() =>
@@ -121,6 +129,8 @@ export default function App() {
   const hasInitialLoadRef = useRef(false);
   // 狀態訊息自動隱藏計時器
   const statusTimeoutRef = useRef(null);
+  // 寫入成功後的背景靜默重載計時器（合併短時間內的多筆寫入，只發一次 GET）
+  const silentRefreshTimerRef = useRef(null);
 
   // 統一管理狀態訊息——顯示新訊息前先清除舊計時器，
   // 避免較早的 setTimeout 把較新的訊息清掉；autoHideMs > 0 時才自動隱藏
@@ -210,12 +220,18 @@ export default function App() {
       if (statusTimeoutRef.current) {
         clearTimeout(statusTimeoutRef.current);
       }
+      if (silentRefreshTimerRef.current) {
+        clearTimeout(silentRefreshTimerRef.current);
+      }
     },
     []
   );
 
   // --- API 請求與數據處理 ---
-  const loadDataFromGAS = async (url = gasUrl, token = gasApiToken) => {
+  // options.silent = true：背景靜默重載，不切換全域 loading、不顯示狀態訊息，
+  // 用於寫入成功後補回 GAS 產生的 id，避免多一趟 GET 讓 UI 多等數秒。
+  const loadDataFromGAS = async (url = gasUrl, token = gasApiToken, options = {}) => {
+    const { silent = false } = options;
     if (!url) {
       setShowUrlModal(true);
       return;
@@ -230,8 +246,10 @@ export default function App() {
     loadAbortRef.current = controller;
     const requestId = ++loadRequestIdRef.current;
 
-    setLoading(true);
-    showStatus('info', '正在連線至 Google Sheets 讀取數據...');
+    if (!silent) {
+      setLoading(true);
+      showStatus('info', '正在連線至 Google Sheets 讀取數據...');
+    }
     try {
       // 改用 fetchJson 統一檢查 HTTP 狀態碼並確保回應為 JSON
       const json = await fetchJson(buildGasUrl(url, token), { signal: controller.signal });
@@ -259,7 +277,7 @@ export default function App() {
         setTransactions(fetchedTransactions.map(sanitizeTransaction).filter(Boolean));
         setRecurringExpenses(fetchedRecurring.map(sanitizeRecurring).filter(Boolean));
 
-        showStatus('success', '數據同步成功！', 3000);
+        if (!silent) showStatus('success', '數據同步成功！', 3000);
       } else {
         throw new Error(json.message || '無法取得數據');
       }
@@ -267,17 +285,37 @@ export default function App() {
       // 此請求已被較新的請求取代（abort），不需任何處理
       if (err?.name === 'AbortError') return;
       console.error(err);
-      showStatus('error', '同步失敗: ' + (err?.message || '未知錯誤'));
+      // 背景靜默重載失敗只記錄在 console，不打擾使用者（畫面保留樂觀更新結果）
+      if (!silent) showStatus('error', '同步失敗: ' + (err?.message || '未知錯誤'));
       // 同步失敗時保留畫面上現有的數據（不再清空），
       // 避免暫時性網路錯誤讓使用者以為所有資料都消失了
     } finally {
       // 只有「最新」的請求可以關閉 loading，避免舊請求提前關閉新請求的載入狀態
       if (requestId === loadRequestIdRef.current) {
         loadAbortRef.current = null;
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     }
   };
+
+  // 取消尚未執行的背景靜默重載（例如使用者換了 GAS URL，舊 URL 的重載不該再發出）
+  const cancelScheduledSilentRefresh = () => {
+    if (silentRefreshTimerRef.current) {
+      clearTimeout(silentRefreshTimerRef.current);
+      silentRefreshTimerRef.current = null;
+    }
+  };
+
+  // 寫入成功後在背景靜默重載（不 await、不切換 loading）：
+  // 除了把 GAS 產生的正式 id 補回前端，也合併短時間內的多筆寫入只發一次 GET。
+  const scheduleSilentRefresh = () => {
+    cancelScheduledSilentRefresh();
+    silentRefreshTimerRef.current = setTimeout(() => {
+      silentRefreshTimerRef.current = null;
+      loadDataFromGAS(undefined, undefined, { silent: true });
+    }, SILENT_REFRESH_DEBOUNCE_MS);
+  };
+
   // 首次載入：等 loadDataFromGAS 定義之後才註冊 effect，避免使用尚未宣告的常數。
   // 刻意只在掛載時執行一次（hasInitialLoadRef 已防止 StrictMode 重複載入），
   // 因此不把 gasUrl / loadDataFromGAS 列入依賴陣列。
@@ -313,6 +351,8 @@ export default function App() {
     if (!safeSetItem('gas_api_token', normalizedToken)) {
       console.warn('無法寫入 localStorage（gas_api_token），Token 將不會在下次開啟時保留');
     }
+    // 換 URL 後，先前排定的背景重載會用到舊 URL，先取消
+    cancelScheduledSilentRefresh();
     setShowUrlModal(false);
     loadDataFromGAS(normalizedUrl, normalizedToken);
   };
@@ -353,10 +393,12 @@ export default function App() {
       return;
     }
 
-    setLoading(true);
+    setSubmitting(true);
     try {
       const resJson = await postToGAS(gasUrl, payload, gasApiToken);
-      if (resJson.status === 'success') await loadDataFromGAS();
+      // 不再 await 重新載入（原本會多花一趟 GAS GET，讓 UI 多等數秒）；
+      // 改由背景靜默重載補回 GAS 產生的正式 id。
+      if (resJson.status === 'success') scheduleSilentRefresh();
       else {
         alert('寫入失敗：' + resJson.message);
         // 回滾樂觀更新
@@ -367,7 +409,7 @@ export default function App() {
       // 回滾樂觀更新
       setTransactions(prev => (Array.isArray(prev) ? prev : []).filter(t => t.id !== tempId));
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -400,11 +442,11 @@ export default function App() {
       return;
     }
 
-    setLoading(true);
+    setSubmitting(true);
     try {
       const resJson = await postToGAS(gasUrl, payload, gasApiToken);
-      if (resJson.status === 'success') await loadDataFromGAS();
-      else {
+      // 編輯以既有 id 為準、樂觀更新即為最終結果，成功時無需再拉一次資料
+      if (resJson.status !== 'success') {
         alert('更新失敗：' + resJson.message);
         // 回滾樂觀更新，還原為修改前的資料
         rollbackTransactionUpdate(payload.id, previous);
@@ -414,7 +456,7 @@ export default function App() {
       // 回滾樂觀更新，還原為修改前的資料
       rollbackTransactionUpdate(payload.id, previous);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -426,7 +468,7 @@ export default function App() {
 
     setTransactions(prev => (Array.isArray(prev) ? prev : []).filter(t => t.id !== id));
     if (gasUrl) {
-      setLoading(true);
+      setSubmitting(true);
       try {
         const resJson = await postToGAS(gasUrl, { action: 'deleteTransaction', id: id }, gasApiToken);
         if (resJson.status !== 'success') {
@@ -437,7 +479,7 @@ export default function App() {
         alert('刪除請求失敗：' + err.message);
         await loadDataFromGAS();
       } finally {
-        setLoading(false);
+        setSubmitting(false);
       }
     }
   };
@@ -463,10 +505,11 @@ export default function App() {
       return;
     }
 
-    setLoading(true);
+    setSubmitting(true);
     try {
       const resJson = await postToGAS(gasUrl, payload, gasApiToken);
-      if (resJson.status === 'success') await loadDataFromGAS();
+      // 同新增交易：跳過 await 重新載入，交由背景靜默重載補回正式 id
+      if (resJson.status === 'success') scheduleSilentRefresh();
       else {
         alert('恆常開支寫入失敗：' + resJson.message);
         // 回滾樂觀更新
@@ -477,7 +520,7 @@ export default function App() {
       // 回滾樂觀更新
       setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).filter(r => r.id !== tempId));
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -489,7 +532,7 @@ export default function App() {
 
     setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).filter(r => r.id !== id));
     if (gasUrl) {
-      setLoading(true);
+      setSubmitting(true);
       try {
         const resJson = await postToGAS(gasUrl, { action: 'deleteRecurring', id: id }, gasApiToken);
         if (resJson.status !== 'success') {
@@ -500,7 +543,7 @@ export default function App() {
         alert('刪除請求失敗：' + err.message);
         await loadDataFromGAS();
       } finally {
-        setLoading(false);
+        setSubmitting(false);
       }
     }
   };
@@ -534,11 +577,11 @@ export default function App() {
       return;
     }
 
-    setLoading(true);
+    setSubmitting(true);
     try {
       const resJson = await postToGAS(gasUrl, payload, gasApiToken);
-      if (resJson.status === 'success') await loadDataFromGAS();
-      else {
+      // 編輯以既有 id 為準、樂觀更新即為最終結果，成功時無需再拉一次資料
+      if (resJson.status !== 'success') {
         alert('更新失敗：' + resJson.message);
         // 回滾樂觀更新，還原為修改前的資料
         rollbackRecurringUpdate(payload.id, previous);
@@ -548,7 +591,7 @@ export default function App() {
       // 回滾樂觀更新，還原為修改前的資料
       rollbackRecurringUpdate(payload.id, previous);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -610,7 +653,7 @@ export default function App() {
     }
 
     // 將類別變更逐筆同步回試算表，避免下次同步時被還原
-    setLoading(true);
+    setSubmitting(true);
     try {
       const transactionResults = affectedTransactions.map(t =>
         postToGAS(gasUrl, { action: 'editTransaction', ...t, category: fallbackName }, gasApiToken)
@@ -620,16 +663,18 @@ export default function App() {
       );
       const results = await Promise.allSettled([...transactionResults, ...recurringResults]);
       const failedCount = results.filter(r => r.status === 'rejected' || r.value?.status !== 'success').length;
-      await loadDataFromGAS();
+      // 全部成功時樂觀更新即為最終結果，不再 await 重新載入；
+      // 僅在部分失敗時才背景靜默重載，讓畫面回到試算表的實際狀態
       if (failedCount > 0) {
         showStatus('error', `類別刪除完成，但有 ${failedCount} 筆紀錄的新類別未能同步至試算表，下次同步時可能還原。`);
+        scheduleSilentRefresh();
       }
     } catch (err) {
       // Promise.allSettled 與 loadDataFromGAS 正常都不會拋錯，此 catch 僅防禦性保留
       console.error(err);
       await loadDataFromGAS();
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -851,7 +896,7 @@ export default function App() {
           <SettingsPage
             gasUrl={gasUrl}
             hasToken={!!gasApiToken}
-            loading={loading}
+            loading={loading || submitting}
             onRefresh={() => loadDataFromGAS()}
             onOpenUrlModal={() => setShowUrlModal(true)}
             onOpenCategoryModal={() => setShowCategoryModal(true)}
@@ -936,7 +981,7 @@ export default function App() {
           categories={categories}
           onClose={() => setShowRecurringModal(false)}
           onAdd={handleAddRecurring}
-          loading={loading}
+          loading={submitting}
         />
       )}
       {editingRecurring && (
@@ -945,7 +990,7 @@ export default function App() {
           initialRecurring={editingRecurring}
           onClose={() => setEditingRecurring(null)}
           onUpdate={handleUpdateRecurring}
-          loading={loading}
+          loading={submitting}
         />
       )}
       {showAddModal && (
@@ -953,7 +998,7 @@ export default function App() {
           categories={categories}
           onClose={() => setShowAddModal(false)}
           onSubmit={handleAddTransaction}
-          loading={loading}
+          loading={submitting}
         />
       )}
       {editingTransaction && (
@@ -962,7 +1007,7 @@ export default function App() {
           categories={categories}
           onClose={() => setEditingTransaction(null)}
           onSubmit={handleUpdateTransaction}
-          loading={loading}
+          loading={submitting}
         />
       )}
     </div>
