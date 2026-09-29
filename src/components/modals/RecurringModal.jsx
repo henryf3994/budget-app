@@ -1,33 +1,21 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { X, RefreshCw } from 'lucide-react';
-import { PAYERS, PAYMENT_METHODS, getPaymentMethodStyle } from '../../utils/constants.js';
+import { DEFAULT_CATEGORY_NAME, PAYERS, PAYMENT_METHODS, getPaymentMethodStyle } from '../../utils/constants.js';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
 import { buildSubmittedFormData, resolveCustomPaymentState } from '../../utils/formHelpers.js';
 import { validateRecurringFields } from '../../utils/validation.js';
-import fmhAvatar from '../../assets/fmh.png';
-import yskAvatar from '../../assets/ysk.png';
+import { getPayerAvatar } from '../../utils/payerAvatars.js';
 
 // =========================================================================
 // 📁 src/components/modals/RecurringModal.jsx
 // =========================================================================
-function RecurringModal({
-  categories = [],
-  onClose,
-  onAdd,
-  loading,
-  initialRecurring,
-  onUpdate
-}) {
+function RecurringModal({ categories = [], onClose, onAdd, loading, initialRecurring, onUpdate }) {
   const modalRef = useRef(null);
   useOnClickOutside(modalRef, onClose);
-  const payerAvatars = {
-    YSK: yskAvatar,
-    FMH: fmhAvatar
-  };
 
   // 安全取得第一個分類名稱
   const safeCategories = Array.isArray(categories) ? categories : [];
-  const defaultCategory = safeCategories[0]?.name || '其他';
+  const defaultCategory = safeCategories[0]?.name || DEFAULT_CATEGORY_NAME;
   const defaultPayer = PAYERS[0];
   const defaultPaymentMethod = PAYMENT_METHODS[0];
 
@@ -70,7 +58,7 @@ function RecurringModal({
   const [newRec, setNewRec] = useState(isEditing ? createInitialRecurring : createEmptyRecurring);
   const [fieldErrors, setFieldErrors] = useState({});
 
-  const handleSubmit = (e) => {
+  const handleSubmit = e => {
     e.preventDefault();
 
     const errors = validateRecurringFields(newRec);
@@ -96,7 +84,8 @@ function RecurringModal({
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
         ref={modalRef}
-        className="recurring-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+        className="recurring-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto"
+      >
         <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-ink">
           <X className="w-5 h-5" />
         </button>
@@ -107,7 +96,6 @@ function RecurringModal({
         </h3>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-
           <div>
             <label className="block text-lg font-medium text-muted mb-1">項目標題</label>
             <div className="pixel-border-sm p-0.5">
@@ -117,7 +105,7 @@ function RecurringModal({
                 maxLength={50}
                 placeholder="請輸入固定支出名稱"
                 value={newRec.title}
-                onChange={(e) => {
+                onChange={e => {
                   setNewRec({ ...newRec, title: e.target.value });
                   setFieldErrors(prev => ({ ...prev, title: '' }));
                 }}
@@ -130,14 +118,16 @@ function RecurringModal({
           <div>
             <label className="block text-lg font-medium text-muted mb-1">金額</label>
             <div className="pixel-border-sm relative p-0.5">
-              <span className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted text-sm font-semibold">HK$</span>
+              <span className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted text-sm font-semibold">
+                HK$
+              </span>
               <input
                 type="number"
                 step="1"
                 required
                 placeholder="0"
                 value={newRec.amount}
-                onChange={(e) => {
+                onChange={e => {
                   setNewRec({ ...newRec, amount: e.target.value });
                   setFieldErrors(prev => ({ ...prev, amount: '' }));
                 }}
@@ -154,13 +144,17 @@ function RecurringModal({
             <div className="pixel-border-sm p-0.5">
               <select
                 value={newRec.category}
-                onChange={(e) => setNewRec({ ...newRec, category: e.target.value })}
+                onChange={e => setNewRec({ ...newRec, category: e.target.value })}
                 className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-sm text-ink focus:outline-none focus:border-primary"
               >
-                {safeCategories.length > 0 ? safeCategories.map(c => (
-                  <option key={c.id || c.name} value={c.name}>{c.name}</option>
-                )) : (
-                  <option value="其他">其他</option>
+                {safeCategories.length > 0 ? (
+                  safeCategories.map(c => (
+                    <option key={c.id || c.name} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))
+                ) : (
+                  <option value={DEFAULT_CATEGORY_NAME}>{DEFAULT_CATEGORY_NAME}</option>
                 )}
               </select>
             </div>
@@ -169,7 +163,7 @@ function RecurringModal({
           <div>
             <label className="block text-lg font-medium text-muted mb-1">付款人</label>
             <div className="grid grid-cols-2 gap-2">
-              {(PAYERS || []).map(p => (
+              {PAYERS.map(p => (
                 <button
                   key={p}
                   type="button"
@@ -183,7 +177,7 @@ function RecurringModal({
                 >
                   <img
                     className={`h-12 w-full object-contain ${p === 'FMH' ? 'scale-110' : ''}`}
-                    src={payerAvatars[p]}
+                    src={getPayerAvatar(p)}
                     alt={p}
                   />
                 </button>
@@ -194,7 +188,7 @@ function RecurringModal({
           <div>
             <label className="block text-lg font-medium text-muted mb-1">付款方式</label>
             <div className="grid grid-cols-2 gap-2 mb-2">
-              {(PAYMENT_METHODS || []).map(pm => (
+              {PAYMENT_METHODS.map(pm => (
                 <button
                   key={pm}
                   type="button"
@@ -214,7 +208,7 @@ function RecurringModal({
               maxLength={30}
               placeholder="自訂其他付款方式..."
               value={newRec.customPaymentMethod}
-              onChange={(e) => {
+              onChange={e => {
                 setNewRec({
                   ...newRec,
                   customPaymentMethod: e.target.value,
@@ -226,7 +220,9 @@ function RecurringModal({
                 newRec.isCustomPayment ? 'border-danger bg-surface-warm' : 'border-ink'
               } ${fieldErrors.customPaymentMethod ? 'border-danger' : ''}`}
             />
-            {fieldErrors.customPaymentMethod && <p className="text-[11px] text-danger mt-1">{fieldErrors.customPaymentMethod}</p>}
+            {fieldErrors.customPaymentMethod && (
+              <p className="text-[11px] text-danger mt-1">{fieldErrors.customPaymentMethod}</p>
+            )}
           </div>
 
           <div>
@@ -238,7 +234,7 @@ function RecurringModal({
                   min="1"
                   max="31"
                   value={newRec.dayOfMonth}
-                  onChange={(e) => {
+                  onChange={e => {
                     setNewRec({ ...newRec, dayOfMonth: e.target.value });
                     setFieldErrors(prev => ({ ...prev, dayOfMonth: '' }));
                   }}
@@ -258,7 +254,7 @@ function RecurringModal({
                 maxLength={200}
                 placeholder="可留空"
                 value={newRec.note}
-                onChange={(e) => setNewRec({ ...newRec, note: e.target.value })}
+                onChange={e => setNewRec({ ...newRec, note: e.target.value })}
                 className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-sm text-ink focus:outline-none"
               />
             </div>
@@ -266,11 +262,7 @@ function RecurringModal({
 
           <div className="pt-2 flex gap-2">
             {isEditing && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="pixel-button-accent w-1/2 py-2.5"
-              >
+              <button type="button" onClick={onClose} className="pixel-button-accent w-1/2 py-2.5">
                 取消
               </button>
             )}
@@ -279,7 +271,7 @@ function RecurringModal({
               disabled={loading}
               className={`pixel-button-primary py-2.5 ${isEditing ? 'w-1/2' : 'w-full'}`}
             >
-              {loading ? '正在提交中...' : (isEditing ? '儲存修改' : '確認新增恆常開支')}
+              {loading ? '正在提交中...' : isEditing ? '儲存修改' : '確認新增恆常開支'}
             </button>
           </div>
         </form>

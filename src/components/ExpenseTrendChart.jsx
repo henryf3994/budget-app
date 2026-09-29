@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { TrendingUp } from 'lucide-react';
+import { DEFAULT_CATEGORY_NAME } from '../utils/constants.js';
+import { addMonths, formatCompact, formatTooltip, monthKey, niceCeil } from '../utils/chartMath.js';
 
 // =========================================================================
 // 📁 src/components/ExpenseTrendChart.jsx
@@ -17,50 +19,16 @@ const MONTHS_SHOWN = 7;
 
 // SVG 內使用的顏色（對應 tailwind.config.js 的設計 token，避免字面量重複散落）
 const CHART_COLORS = {
-  line: '#F28C77',            // primary
-  surfaceWarm: '#FFF9EF',     // surface-warm（資料點留白填充）
-  axisLabel: '#8F8995',       // muted
-  highlightLabel: '#2A2356',  // ink
-  gridLine: '#E7DCCB',        // 網格線（無對應 token，保留字面量）
+  line: '#F28C77', // primary
+  surfaceWarm: '#FFF9EF', // surface-warm（資料點留白填充）
+  axisLabel: '#8F8995', // muted
+  highlightLabel: '#2A2356', // ink
+  gridLine: '#E7DCCB' // 網格線（無對應 token，保留字面量）
 };
 
-// 在 (year, month) 基礎上加上 delta 個月，回傳新的 { year, month }
-function addMonths(year, month, delta) {
-  const total = year * 12 + (month - 1) + delta;
-  return { year: Math.floor(total / 12), month: (total % 12) + 1 };
-}
-
-function monthKey(year, month) {
-  return `${year}-${String(month).padStart(2, '0')}`;
-}
-
-// 將最大值無條件進位到「好看」的數字（1 / 2 / 5 / 10 的倍數）
-function niceCeil(v) {
-  if (v <= 0) return 1;
-  const pow = Math.pow(10, Math.floor(Math.log10(v)));
-  const normalized = v / pow;
-  let nice;
-  if (normalized <= 1) nice = 1;
-  else if (normalized <= 2) nice = 2;
-  else if (normalized <= 5) nice = 5;
-  else nice = 10;
-  return nice * pow;
-}
-
-// 將金額轉為簡潔標籤（例如 12500 -> 13k）
-function formatCompact(v) {
-  if (v >= 10000) return `${(v / 1000).toFixed(0)}k`;
-  if (v >= 1000) return `${(v / 1000).toFixed(1)}k`;
-  return String(Math.round(v));
-}
-
-// 格式化圖表的 tooltip 文字，例如「2026年8月: HK$ 12,500」
-function formatTooltip(year, month, value) {
-  return `${year}年${month}月: HK$ ${value.toLocaleString()}`;
-}
-
 function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth, onMonthSelect }) {
-  const safeCategories = Array.isArray(categories) ? categories : [];
+  // 以 useMemo 固定參考，fallback 的空陣列才不會讓下游 useMemo 每次 render 都重算
+  const safeCategories = useMemo(() => (Array.isArray(categories) ? categories : []), [categories]);
   const [viewMode, setViewMode] = useState('total'); // 'total' | 'category'
   const [selectedCategoryId, setSelectedCategoryId] = useState(safeCategories[0]?.id || '');
 
@@ -107,7 +75,7 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
       const total = monthTx.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
       const byCategory = {};
       monthTx.forEach(t => {
-        const cat = t.category || '其他';
+        const cat = t.category || DEFAULT_CATEGORY_NAME;
         byCategory[cat] = (byCategory[cat] || 0) + (Number(t.amount) || 0);
       });
       return { ...m, key, total, byCategory };
@@ -115,8 +83,13 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
   }, [months, transactions]);
 
   // 有效分類（若選取的分類被刪除則退回第一個）
-  const effectiveCategory = safeCategories.find(c => c.id === selectedCategoryId) || safeCategories[0];
-  const lineColor = viewMode === 'total' ? CHART_COLORS.line : (effectiveCategory?.color || CHART_COLORS.line);
+  // 以 useMemo 固定物件參考，否則 values 的 useMemo 會因為依賴每次 render
+  // 都變動而失效（每次都重算）。
+  const effectiveCategory = useMemo(
+    () => safeCategories.find(c => c.id === selectedCategoryId) || safeCategories[0],
+    [safeCategories, selectedCategoryId]
+  );
+  const lineColor = viewMode === 'total' ? CHART_COLORS.line : effectiveCategory?.color || CHART_COLORS.line;
 
   // 點擊月份標籤／資料點時切換目前顯示的月份
   const selectMonth = (year, month) => onMonthSelect?.(year, month);
@@ -139,8 +112,8 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
 
     const maxVal = niceCeil(Math.max(...values, 1));
     const yScale = chartH / maxVal;
-    const xPos = (i) => PAD_L + (i * (chartW / (MONTHS_SHOWN - 1)));
-    const yPos = (v) => chartBottom - (v * yScale);
+    const xPos = i => PAD_L + i * (chartW / (MONTHS_SHOWN - 1));
+    const yPos = v => chartBottom - v * yScale;
 
     const linePath = values
       .map((v, i) => `${i === 0 ? 'M' : 'L'} ${xPos(i).toFixed(1)} ${yPos(v).toFixed(1)}`)
@@ -149,11 +122,11 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
 
     // 水平格線（0 / 25% / 50% / 75% / 100%）
     const gridLines = [0, 0.25, 0.5, 0.75, 1].map(f => ({
-      y: chartBottom - (f * chartH),
-      value: maxVal * f,
+      y: chartBottom - f * chartH,
+      value: maxVal * f
     }));
 
-    return { xPos, yPos, chartBottom, maxVal, linePath, areaPath, gridLines };
+    return { xPos, yPos, chartBottom, linePath, areaPath, gridLines };
   }, [values]);
 
   const rangeLabel = `${windowStart.year}年${windowStart.month}月 - ${windowEnd.year}年${windowEnd.month}月`;
@@ -303,15 +276,7 @@ function ExpenseTrendChart({ transactions, categories, currentYear, currentMonth
                 <title>{formatTooltip(months[i].year, months[i].month, v)}</title>
               </circle>
               {isHighlight && (
-                <circle
-                  cx={xPos(i)}
-                  cy={yPos(v)}
-                  r="10"
-                  fill="none"
-                  stroke={lineColor}
-                  strokeWidth="1.5"
-                  opacity="0.5"
-                >
+                <circle cx={xPos(i)} cy={yPos(v)} r="10" fill="none" stroke={lineColor} strokeWidth="1.5" opacity="0.5">
                   <title>{formatTooltip(months[i].year, months[i].month, v)}</title>
                 </circle>
               )}

@@ -1,11 +1,12 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { X, Plus, RefreshCw, Edit3, Trash2 } from 'lucide-react';
 import {
+  DEFAULT_CATEGORY_NAME,
   getPayerStyle,
   getPaymentMethodStyle,
-  CATEGORY_FILTER_ALL,
+  CATEGORY_FILTER_ALL
 } from '../utils/constants.js';
-import { buildCategoryColorMap, formatMoney } from '../utils/listHelpers.js';
+import { buildCategoryColorMap, formatMoney, getCategoryColorFromMap } from '../utils/listHelpers.js';
 
 // =========================================================================
 // 📁 src/components/RecurringExpenseList.jsx
@@ -21,14 +22,9 @@ function RecurringExpenseList({
   onSearchChange,
   onEdit,
   onDelete,
-  onAdd,
+  onAdd
 }) {
-  const categoryColorById = useMemo(
-    () => buildCategoryColorMap(categories),
-    [categories]
-  );
-
-  const getCategoryColor = (catName) => categoryColorById.get(catName) || categoryColorById.get('其他');
+  const categoryColorById = useMemo(() => buildCategoryColorMap(categories), [categories]);
 
   return (
     <div className="pixel-card bg-surface overflow-hidden">
@@ -69,19 +65,21 @@ function RecurringExpenseList({
               type="text"
               placeholder="搜尋項目/付款人/備註..."
               value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
+              onChange={e => onSearchChange(e.target.value)}
               className="relative z-0 w-full sm:w-64 bg-surface-soft border-0 rounded-none text-ink text-sm pl-3 pr-3 py-2 focus:outline-none focus:border-primary"
             />
           </div>
           <div className="pixel-border-sm p-0.5">
             <select
               value={selectedCategoryFilter}
-              onChange={(e) => onCategoryFilterChange(e.target.value)}
+              onChange={e => onCategoryFilterChange(e.target.value)}
               className="relative z-0 w-full bg-surface-soft border-0 rounded-none text-ink text-sm px-3 py-2 focus:outline-none focus:border-primary"
             >
               <option value={CATEGORY_FILTER_ALL}>所有類別</option>
               {categories.map(c => (
-                <option key={c.id} value={c.name}>{c.name}</option>
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
               ))}
             </select>
           </div>
@@ -94,32 +92,47 @@ function RecurringExpenseList({
             <div className="w-16 h-16 rounded-pixel-card bg-surface-warm border-2 border-ink flex items-center justify-center shadow-pixel-sm">
               <RefreshCw className="w-8 h-8 text-primary-dark" />
             </div>
-            <p className="text-sm font-medium text-ink-soft max-w-xs">目前沒有恆常開支，點擊右上角「新增恆常開支」或總覽的「恆常開支」按鈕開始設定</p>
+            <p className="text-sm font-medium text-ink-soft max-w-xs">
+              目前沒有恆常開支，點擊右上角「新增恆常開支」或總覽的「恆常開支」按鈕開始設定
+            </p>
           </div>
         ) : (
           recurringExpenses.map((item, idx) => {
-            const catColor = getCategoryColor(item.category);
+            const catColor = getCategoryColorFromMap(categoryColorById, item.category);
             return (
-              <div key={item.id || idx} className="transaction-row relative p-4 pl-6 hover:bg-surface-warm transition-colors flex flex-col gap-2">
-                <div aria-hidden="true" className="expense-indicator transaction-expense-indicator absolute inset-y-0 left-0" style={{ backgroundColor: catColor }} />
+              <div
+                key={item.id || idx}
+                className="transaction-row relative p-4 pl-6 hover:bg-surface-warm transition-colors flex flex-col gap-2"
+              >
+                <div
+                  aria-hidden="true"
+                  className="expense-indicator transaction-expense-indicator absolute inset-y-0 left-0"
+                  style={{ backgroundColor: catColor }}
+                />
                 <div className="flex items-center justify-between gap-3 min-w-0">
                   <div className="flex items-center flex-wrap gap-1.5 min-w-0">
                     <span className="text-xl font-semibold text-ink break-words">{item.title}</span>
                     <span className="transaction-category-name text-base font-semibold" style={{ color: catColor }}>
-                      {item.category || '其他'}
+                      {item.category || DEFAULT_CATEGORY_NAME}
                     </span>
                   </div>
-                  <span className="text-xl text-muted tabular-nums whitespace-nowrap shrink-0">每月 {item.dayOfMonth} 號</span>
+                  <span className="text-xl text-muted tabular-nums whitespace-nowrap shrink-0">
+                    每月 {item.dayOfMonth} 號
+                  </span>
                 </div>
-                  <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3">
                   <div className="text-xs text-muted flex items-center flex-wrap gap-x-2 gap-y-0.5 min-w-0">
                     {item.payer && (
-                      <span className={`pixel-border-sm text-base px-1.5 py-0.2 rounded-pixel-sm font-medium ${getPayerStyle(item.payer, 'button')}`}>
+                      <span
+                        className={`pixel-border-sm text-base px-1.5 py-0.2 rounded-pixel-sm font-medium ${getPayerStyle(item.payer, 'button')}`}
+                      >
                         {item.payer}
                       </span>
                     )}
                     {item.paymentMethod && (
-                      <span className={`pixel-border-sm text-base px-1.5 py-0.2 rounded-pixel-sm font-medium ${getPaymentMethodStyle(item.paymentMethod, 'button')}`}>
+                      <span
+                        className={`pixel-border-sm text-base px-1.5 py-0.2 rounded-pixel-sm font-medium ${getPaymentMethodStyle(item.paymentMethod, 'button')}`}
+                      >
                         {item.paymentMethod}
                       </span>
                     )}

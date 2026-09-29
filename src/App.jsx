@@ -14,11 +14,27 @@ import RecurringModal from './components/modals/RecurringModal';
 import AddTransactionModal from './components/modals/AddTransactionModal';
 import EditTransactionModal from './components/modals/EditTransactionModal';
 import appBackground from './assets/background.png';
-import { INITIAL_CATEGORIES, CATEGORY_FILTER_ALL, FALLBACK_CATEGORY_COLOR } from './utils/constants.js';
+import {
+  INITIAL_CATEGORIES,
+  CATEGORY_FILTER_ALL,
+  FALLBACK_CATEGORY_COLOR,
+  DEFAULT_CATEGORY_NAME,
+  STORAGE_KEYS
+} from './utils/constants.js';
 import { matchesCategoryFilter, matchesSearchQuery } from './utils/filters.js';
-import { ensureValidCategories, isValidUrl, normalizePaymentMethod, sanitizeRecurring, sanitizeText, sanitizeTransaction, validateRecurringForm, validateTransactionForm } from './utils/validation.js';
+import {
+  isValidUrl,
+  migrateLegacyCategories,
+  normalizePaymentMethod,
+  sanitizeRecurring,
+  sanitizeText,
+  sanitizeTransaction,
+  validateRecurringForm,
+  validateTransactionForm
+} from './utils/validation.js';
 import { safeGetItem, safeSetItem } from './utils/storage.js';
 import { fetchJson, postToGAS, buildGasUrl } from './utils/gasApi.js';
+import { createId } from './utils/id.js';
 
 // 尚未設定同步網址時的提示訊息（依操作類型區分，集中管理避免字面量重複）
 const NO_GAS_URL_MESSAGES = {
@@ -30,7 +46,7 @@ const NO_GAS_URL_MESSAGES = {
 };
 
 // 依狀態訊息類型回傳對應的樣式類別
-const statusClass = (type) =>
+const statusClass = type =>
   type === 'error'
     ? 'bg-red-50 border-danger text-danger'
     : type === 'success'
@@ -52,20 +68,26 @@ export default function App() {
   // --- Global States ---
   const [activeTab, setActiveTab] = useState('overview');
   // 以 safeGetItem 包裝，儲存空間被封鎖時不再於啟動時當機
-  const [gasUrl, setGasUrl] = useState(() => safeGetItem('gas_app_url', ''));
+  const [gasUrl, setGasUrl] = useState(() => safeGetItem(STORAGE_KEYS.gasUrl, ''));
   // 選用的 API Token（配合 GAS 端 GAS_API_TOKEN Script Property），端點授權用；未設定即公開
-  const [gasApiToken, setGasApiToken] = useState(() => safeGetItem('gas_api_token', ''));
+  const [gasApiToken, setGasApiToken] = useState(() => safeGetItem(STORAGE_KEYS.gasApiToken, ''));
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
 
-  const [transactions, setTransactions] = useState(() => readCachedData('app_transactions_cache', sanitizeTransaction));
-  const [recurringExpenses, setRecurringExpenses] = useState(() => readCachedData('app_recurring_cache', sanitizeRecurring));
+  const [transactions, setTransactions] = useState(() =>
+    readCachedData(STORAGE_KEYS.transactionsCache, sanitizeTransaction)
+  );
+  const [recurringExpenses, setRecurringExpenses] = useState(() =>
+    readCachedData(STORAGE_KEYS.recurringCache, sanitizeRecurring)
+  );
   const [categories, setCategories] = useState(() => {
     try {
       // 以 safeGetItem 包裝，儲存空間被封鎖時回傳 fallback
-      const saved = safeGetItem('app_categories', '');
+      const saved = safeGetItem(STORAGE_KEYS.categories, '');
       if (!saved) return INITIAL_CATEGORIES;
-      return ensureValidCategories(JSON.parse(saved));
+      // 舊版曾把「住屋交通」合併為單一類別，載入時一次性拆成「住屋」與「交通」
+      // （migrateLegacyCategories 內部已包含 ensureValidCategories 的結構修復）
+      return migrateLegacyCategories(JSON.parse(saved));
     } catch {
       return INITIAL_CATEGORIES;
     }
@@ -117,11 +139,9 @@ export default function App() {
   };
 
   // 尚未設定同步網址時的統一警告（訊息內容集中在模組頂層的 NO_GAS_URL_MESSAGES）
-  const warnNoGasUrl = (key) => showStatus('error', NO_GAS_URL_MESSAGES[key]);
+  const warnNoGasUrl = key => showStatus('error', NO_GAS_URL_MESSAGES[key]);
 
-  const createTempId = (prefix) => `${prefix}${Date.now()}`;
-
-  const normalizeDayOfMonth = (value) => {
+  const normalizeDayOfMonth = value => {
     const day = parseInt(value, 10);
     return Number.isNaN(day) ? 1 : day;
   };
@@ -167,38 +187,32 @@ export default function App() {
 
   useEffect(() => {
     // 以 safeSetItem 包裝，儲存空間被封鎖時不再於 effect 內拋錯當機
-    if (!safeSetItem('app_categories', JSON.stringify(categories))) {
+    if (!safeSetItem(STORAGE_KEYS.categories, JSON.stringify(categories))) {
       console.warn('無法寫入 localStorage（app_categories），類別設定可能不會被保存');
     }
   }, [categories]);
 
-    useEffect(() => {
-      if (!safeSetItem('app_transactions_cache', JSON.stringify(transactions))) {
-        console.warn('無法寫入 localStorage（app_transactions_cache），交易資料可能不會被保存');
-      }
-    }, [transactions]);
-
-    useEffect(() => {
-      if (!safeSetItem('app_recurring_cache', JSON.stringify(recurringExpenses))) {
-        console.warn('無法寫入 localStorage（app_recurring_cache），恆常開支可能不會被保存');
-      }
-    }, [recurringExpenses]);
+  useEffect(() => {
+    if (!safeSetItem(STORAGE_KEYS.transactionsCache, JSON.stringify(transactions))) {
+      console.warn('無法寫入 localStorage（app_transactions_cache），交易資料可能不會被保存');
+    }
+  }, [transactions]);
 
   useEffect(() => {
-    // StrictMode 下初始 effect 會被執行兩次，以 ref 確保只載入一次
-    if (hasInitialLoadRef.current) return;
-    hasInitialLoadRef.current = true;
-    if (gasUrl) {
-      loadDataFromGAS(gasUrl);
+    if (!safeSetItem(STORAGE_KEYS.recurringCache, JSON.stringify(recurringExpenses))) {
+      console.warn('無法寫入 localStorage（app_recurring_cache），恆常開支可能不會被保存');
     }
-  }, []);
+  }, [recurringExpenses]);
 
   // 元件卸載時清理計時器
-  useEffect(() => () => {
-    if (statusTimeoutRef.current) {
-      clearTimeout(statusTimeoutRef.current);
-    }
-  }, []);
+  useEffect(
+    () => () => {
+      if (statusTimeoutRef.current) {
+        clearTimeout(statusTimeoutRef.current);
+      }
+    },
+    []
+  );
 
   // --- API 請求與數據處理 ---
   const loadDataFromGAS = async (url = gasUrl, token = gasApiToken) => {
@@ -230,16 +244,16 @@ export default function App() {
         const fetchedTransactions = Array.isArray(json.transactions)
           ? json.transactions
           : Array.isArray(json.data?.transactions)
-          ? json.data.transactions
-          : Array.isArray(json.data)
-          ? json.data
-          : [];
+            ? json.data.transactions
+            : Array.isArray(json.data)
+              ? json.data
+              : [];
 
         const fetchedRecurring = Array.isArray(json.recurring)
           ? json.recurring
           : Array.isArray(json.data?.recurring)
-          ? json.data.recurring
-          : [];
+            ? json.data.recurring
+            : [];
 
         // 清洗 GAS 回傳資料，確保欄位安全
         setTransactions(fetchedTransactions.map(sanitizeTransaction).filter(Boolean));
@@ -264,6 +278,18 @@ export default function App() {
       }
     }
   };
+  // 首次載入：等 loadDataFromGAS 定義之後才註冊 effect，避免使用尚未宣告的常數。
+  // 刻意只在掛載時執行一次（hasInitialLoadRef 已防止 StrictMode 重複載入），
+  // 因此不把 gasUrl / loadDataFromGAS 列入依賴陣列。
+  useEffect(() => {
+    // StrictMode 下初始 effect 會被執行兩次，以 ref 確保只載入一次
+    if (hasInitialLoadRef.current) return;
+    hasInitialLoadRef.current = true;
+    if (gasUrl) {
+      loadDataFromGAS(gasUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSaveUrl = (url, token = '') => {
     const normalizedUrl = sanitizeText(url);
@@ -302,10 +328,10 @@ export default function App() {
 
   // 更新失敗時還原單筆恆常開支（previous 為修改前的原資料；找不到原資料時保留現列）
   const rollbackRecurringUpdate = (id, previous) => {
-    setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).map(r => (r?.id === id ? (previous || r) : r)));
+    setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).map(r => (r?.id === id ? previous || r : r)));
   };
 
-  const handleAddTransaction = async (formData) => {
+  const handleAddTransaction = async formData => {
     const validationError = validateTransactionForm(formData);
     if (validationError) {
       alert(validationError);
@@ -317,7 +343,7 @@ export default function App() {
     // 使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
     loadRequestIdRef.current += 1;
 
-    const tempId = createTempId('temp_');
+    const tempId = createId('temp_');
     setTransactions(prev => [{ ...payload, id: tempId }, ...(Array.isArray(prev) ? prev : [])]);
     setShowAddModal(false);
 
@@ -345,7 +371,7 @@ export default function App() {
     }
   };
 
-  const handleUpdateTransaction = async (formData) => {
+  const handleUpdateTransaction = async formData => {
     const validationError = validateTransactionForm(formData);
     if (validationError) {
       alert(validationError);
@@ -365,7 +391,7 @@ export default function App() {
     // 使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
     loadRequestIdRef.current += 1;
 
-    setTransactions(prev => (Array.isArray(prev) ? prev : []).map(t => t.id === payload.id ? payload : t));
+    setTransactions(prev => (Array.isArray(prev) ? prev : []).map(t => (t.id === payload.id ? payload : t)));
     setEditingTransaction(null);
 
     // 尚未設定同步網址時明確警告，避免使用者以為修改已保存
@@ -392,7 +418,7 @@ export default function App() {
     }
   };
 
-  const handleDeleteTransaction = async (id) => {
+  const handleDeleteTransaction = async id => {
     if (!window.confirm('確定要刪除這筆支出紀錄嗎？')) return;
 
     // 使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
@@ -403,16 +429,20 @@ export default function App() {
       setLoading(true);
       try {
         const resJson = await postToGAS(gasUrl, { action: 'deleteTransaction', id: id }, gasApiToken);
-        if (resJson.status !== 'success') { alert('刪除失敗：' + resJson.message); await loadDataFromGAS(); }
+        if (resJson.status !== 'success') {
+          alert('刪除失敗：' + resJson.message);
+          await loadDataFromGAS();
+        }
       } catch (err) {
-        alert('刪除請求失敗：' + err.message); await loadDataFromGAS();
+        alert('刪除請求失敗：' + err.message);
+        await loadDataFromGAS();
       } finally {
         setLoading(false);
       }
     }
   };
 
-  const handleAddRecurring = async (formData) => {
+  const handleAddRecurring = async formData => {
     const validationError = validateRecurringForm(formData);
     if (validationError) {
       alert(validationError);
@@ -424,7 +454,7 @@ export default function App() {
     // 使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
     loadRequestIdRef.current += 1;
 
-    const tempId = createTempId('rec_');
+    const tempId = createId('temp_rec_');
     setRecurringExpenses(prev => [...(Array.isArray(prev) ? prev : []), { ...payload, id: tempId }]);
 
     // 尚未設定同步網址時明確警告，避免使用者以為資料已保存
@@ -451,7 +481,7 @@ export default function App() {
     }
   };
 
-  const handleDeleteRecurring = async (id) => {
+  const handleDeleteRecurring = async id => {
     if (!window.confirm('確定要刪除這筆恆常開支嗎？')) return;
 
     // 使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
@@ -462,16 +492,20 @@ export default function App() {
       setLoading(true);
       try {
         const resJson = await postToGAS(gasUrl, { action: 'deleteRecurring', id: id }, gasApiToken);
-        if (resJson.status !== 'success') { alert('刪除失敗：' + resJson.message); await loadDataFromGAS(); }
+        if (resJson.status !== 'success') {
+          alert('刪除失敗：' + resJson.message);
+          await loadDataFromGAS();
+        }
       } catch (err) {
-        alert('刪除請求失敗：' + err.message); await loadDataFromGAS();
+        alert('刪除請求失敗：' + err.message);
+        await loadDataFromGAS();
       } finally {
         setLoading(false);
       }
     }
   };
 
-  const handleUpdateRecurring = async (formData) => {
+  const handleUpdateRecurring = async formData => {
     const validationError = validateRecurringForm(formData);
     if (validationError) {
       alert(validationError);
@@ -491,7 +525,7 @@ export default function App() {
     // 使任何進行中的載入回應失效，避免舊資料覆蓋接下來的樂觀更新
     loadRequestIdRef.current += 1;
 
-    setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).map(r => r.id === payload.id ? payload : r));
+    setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).map(r => (r.id === payload.id ? payload : r)));
     setEditingRecurring(null);
 
     // 尚未設定同步網址時明確警告，避免使用者以為修改已保存
@@ -518,23 +552,35 @@ export default function App() {
     }
   };
 
-  const handleAddCategory = (newCat) => setCategories(prev => [...prev, newCat]);
+  const handleAddCategory = newCat => setCategories(prev => [...prev, newCat]);
 
-  const handleDeleteCategory = async (catId) => {
-    if (categories.length <= 1) return alert('最少需保留一個類別！');
+  const handleDeleteCategory = async catId => {
+    if (categories.length <= 1) {
+      alert('最少需保留一個類別！');
+      return;
+    }
     const catToDelete = categories.find(c => c.id === catId);
     if (!catToDelete) return;
 
     const remainingCategories = categories.filter(c => c.id !== catId);
     // 歸入目標：優先使用名為「其他」的剩餘類別；若刪除的正是「其他」，退回第一個剩餘類別
-    const fallbackName = remainingCategories.find(c => c.name === '其他')?.name || remainingCategories[0]?.name || '其他';
+    const fallbackName =
+      remainingCategories.find(c => c.name === DEFAULT_CATEGORY_NAME)?.name ||
+      remainingCategories[0]?.name ||
+      DEFAULT_CATEGORY_NAME;
 
     // 檢查是否有資料引用此類別
-    const affectedTransactions = (Array.isArray(transactions) ? transactions : []).filter(t => t?.category === catToDelete.name);
-    const affectedRecurring = (Array.isArray(recurringExpenses) ? recurringExpenses : []).filter(r => r?.category === catToDelete.name);
+    const affectedTransactions = (Array.isArray(transactions) ? transactions : []).filter(
+      t => t?.category === catToDelete.name
+    );
+    const affectedRecurring = (Array.isArray(recurringExpenses) ? recurringExpenses : []).filter(
+      r => r?.category === catToDelete.name
+    );
     const affectedCount = affectedTransactions.length + affectedRecurring.length;
     if (affectedTransactions.length > 0) {
-      const confirmed = window.confirm(`此類別「${catToDelete.name}」有 ${affectedTransactions.length} 筆交易紀錄，刪除後將歸入「${fallbackName}」類別。確定要刪除嗎？`);
+      const confirmed = window.confirm(
+        `此類別「${catToDelete.name}」有 ${affectedTransactions.length} 筆交易紀錄，刪除後將歸入「${fallbackName}」類別。確定要刪除嗎？`
+      );
       if (!confirmed) return;
     }
 
@@ -547,8 +593,16 @@ export default function App() {
     // （先使進行中的載入回應失效，避免舊資料蓋掉重新歸類結果）
     loadRequestIdRef.current += 1;
 
-    setTransactions(prev => (Array.isArray(prev) ? prev : []).map(t => t?.category === catToDelete.name ? { ...t, category: fallbackName } : t));
-    setRecurringExpenses(prev => (Array.isArray(prev) ? prev : []).map(r => r?.category === catToDelete.name ? { ...r, category: fallbackName } : r));
+    setTransactions(prev =>
+      (Array.isArray(prev) ? prev : []).map(t =>
+        t?.category === catToDelete.name ? { ...t, category: fallbackName } : t
+      )
+    );
+    setRecurringExpenses(prev =>
+      (Array.isArray(prev) ? prev : []).map(r =>
+        r?.category === catToDelete.name ? { ...r, category: fallbackName } : r
+      )
+    );
 
     if (!gasUrl) {
       warnNoGasUrl('recategorize');
@@ -604,7 +658,9 @@ export default function App() {
   const categoryBreakdown = useMemo(() => {
     const map = {};
     if (Array.isArray(categories)) {
-      categories.forEach(c => { if (c?.name) map[c.name] = 0; });
+      categories.forEach(c => {
+        if (c?.name) map[c.name] = 0;
+      });
     }
 
     // 收集不在 app 類別清單中的未知類別金額
@@ -612,11 +668,11 @@ export default function App() {
     let unknownTotal = 0;
 
     currentMonthTransactions.forEach(t => {
-      const catName = t?.category || '其他';
+      const catName = t?.category || DEFAULT_CATEGORY_NAME;
       if (knownNames.has(catName)) {
         map[catName] = (map[catName] || 0) + (Number(t?.amount) || 0);
       } else {
-        unknownTotal += (Number(t?.amount) || 0);
+        unknownTotal += Number(t?.amount) || 0;
       }
     });
 
@@ -628,14 +684,14 @@ export default function App() {
 
     // 若有未知類別，將其併入「其他」類別（若存在）或新增一個「其他」項目
     if (unknownTotal > 0) {
-      const otherCat = breakdown.find(c => c.name === '其他');
+      const otherCat = breakdown.find(c => c.name === DEFAULT_CATEGORY_NAME);
       if (otherCat) {
         otherCat.total += unknownTotal;
         otherCat.percentage = totalExpense > 0 ? ((otherCat.total / totalExpense) * 100).toFixed(1) : '0.0';
       } else {
         breakdown.push({
           id: 'cat_unknown',
-          name: '其他',
+          name: DEFAULT_CATEGORY_NAME,
           color: FALLBACK_CATEGORY_COLOR,
           total: unknownTotal,
           percentage: totalExpense > 0 ? ((unknownTotal / totalExpense) * 100).toFixed(1) : '0.0'
@@ -649,14 +705,17 @@ export default function App() {
   const filteredTransactions = useMemo(() => {
     const filtered = currentMonthTransactions.filter(t => {
       if (!t) return false;
-      return matchesCategoryFilter(selectedCategoryFilter, t.category, CATEGORY_FILTER_ALL)
-        && matchesSearchQuery(searchQuery, [t.title, t.payer, t.paymentMethod, t.note]);
+      return (
+        matchesCategoryFilter(selectedCategoryFilter, t.category) &&
+        matchesSearchQuery(searchQuery, [t.title, t.payer, t.paymentMethod, t.note])
+      );
     });
 
     return filtered
       .map((transaction, index) => ({ transaction, index }))
       .sort((a, b) => {
-        const dateComparison = String(b.transaction.date || '').slice(0, 10)
+        const dateComparison = String(b.transaction.date || '')
+          .slice(0, 10)
           .localeCompare(String(a.transaction.date || '').slice(0, 10));
 
         if (transactionSort === 'amount-desc') {
@@ -673,8 +732,10 @@ export default function App() {
     if (!Array.isArray(recurringExpenses)) return [];
     return recurringExpenses.filter(r => {
       if (!r) return false;
-      return matchesCategoryFilter(recurringSelectedCategoryFilter, r.category, CATEGORY_FILTER_ALL)
-        && matchesSearchQuery(recurringSearchQuery, [r.title, r.payer, r.paymentMethod, r.note]);
+      return (
+        matchesCategoryFilter(recurringSelectedCategoryFilter, r.category) &&
+        matchesSearchQuery(recurringSearchQuery, [r.title, r.payer, r.paymentMethod, r.note])
+      );
     });
   }, [recurringExpenses, recurringSelectedCategoryFilter, recurringSearchQuery]);
 
@@ -689,9 +750,7 @@ export default function App() {
         backgroundAttachment: 'fixed'
       }}
     >
-
       <div className="max-w-6xl mx-auto space-y-6 relative">
-
         {/* Header 組件 */}
         <HeaderBar
           currentYear={currentYear}
@@ -703,7 +762,10 @@ export default function App() {
 
         {/* 系統狀態提示 */}
         {statusMsg.text && (
-          <div role="status" className={`pixel-card p-3 text-sm flex items-center gap-2 ${statusClass(statusMsg.type)}`}>
+          <div
+            role="status"
+            className={`pixel-card p-3 text-sm flex items-center gap-2 ${statusClass(statusMsg.type)}`}
+          >
             <Clock className={`w-4 h-4 ${statusMsg.type === 'info' ? 'animate-spin' : ''}`} />
             <span>{statusMsg.text}</span>
           </div>
@@ -713,11 +775,21 @@ export default function App() {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             <div className="grid w-full grid-cols-1 sm:grid-cols-2 gap-3">
-              <button type="button" onClick={() => setShowAddModal(true)} className="pixel-button-primary group flex w-full items-center justify-center space-x-2 px-6 py-3.5 text-base">
-                <Plus className="w-5 h-5" /><span>新增記帳</span>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="pixel-button-primary group flex w-full items-center justify-center space-x-2 px-6 py-3.5 text-base"
+              >
+                <Plus className="w-5 h-5" />
+                <span>新增記帳</span>
               </button>
-              <button type="button" onClick={() => setShowRecurringModal(true)} className="pixel-button-accent flex w-full items-center justify-center space-x-2 px-6 py-3.5 text-base">
-                <RefreshCw className="w-4 h-4" /><span>恆常開支</span>
+              <button
+                type="button"
+                onClick={() => setShowRecurringModal(true)}
+                className="pixel-button-accent flex w-full items-center justify-center space-x-2 px-6 py-3.5 text-base"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>恆常開支</span>
               </button>
             </div>
 
@@ -785,11 +857,13 @@ export default function App() {
             onOpenCategoryModal={() => setShowCategoryModal(true)}
           />
         )}
-
       </div>
 
       {/* Floating Bottom Navigation */}
-      <nav aria-label="主要導覽" className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 pixel-card p-1.5 flex items-center gap-1 z-40">
+      <nav
+        aria-label="主要導覽"
+        className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 pixel-card p-1.5 flex items-center gap-1 z-40"
+      >
         <button
           type="button"
           onClick={() => setActiveTab('overview')}
@@ -841,13 +915,56 @@ export default function App() {
       </nav>
 
       {/* --- Modals --- */}
-      {showUrlModal && <UrlModal initialUrl={gasUrl} initialToken={gasApiToken} onClose={() => setShowUrlModal(false)} onSave={handleSaveUrl} />}
-      {showCategoryModal && <CategoryModal categories={categories} onClose={() => setShowCategoryModal(false)} onAddCategory={handleAddCategory} onDeleteCategory={handleDeleteCategory} />}
-      {showRecurringModal && <RecurringModal categories={categories} onClose={() => setShowRecurringModal(false)} onAdd={handleAddRecurring} loading={loading} />}
-      {editingRecurring && <RecurringModal categories={categories} initialRecurring={editingRecurring} onClose={() => setEditingRecurring(null)} onUpdate={handleUpdateRecurring} loading={loading} />}
-      {showAddModal && <AddTransactionModal categories={categories} onClose={() => setShowAddModal(false)} onSubmit={handleAddTransaction} loading={loading} />}
-      {editingTransaction && <EditTransactionModal transaction={editingTransaction} categories={categories} onClose={() => setEditingTransaction(null)} onSubmit={handleUpdateTransaction} loading={loading} />}
-
+      {showUrlModal && (
+        <UrlModal
+          initialUrl={gasUrl}
+          initialToken={gasApiToken}
+          onClose={() => setShowUrlModal(false)}
+          onSave={handleSaveUrl}
+        />
+      )}
+      {showCategoryModal && (
+        <CategoryModal
+          categories={categories}
+          onClose={() => setShowCategoryModal(false)}
+          onAddCategory={handleAddCategory}
+          onDeleteCategory={handleDeleteCategory}
+        />
+      )}
+      {showRecurringModal && (
+        <RecurringModal
+          categories={categories}
+          onClose={() => setShowRecurringModal(false)}
+          onAdd={handleAddRecurring}
+          loading={loading}
+        />
+      )}
+      {editingRecurring && (
+        <RecurringModal
+          categories={categories}
+          initialRecurring={editingRecurring}
+          onClose={() => setEditingRecurring(null)}
+          onUpdate={handleUpdateRecurring}
+          loading={loading}
+        />
+      )}
+      {showAddModal && (
+        <AddTransactionModal
+          categories={categories}
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleAddTransaction}
+          loading={loading}
+        />
+      )}
+      {editingTransaction && (
+        <EditTransactionModal
+          transaction={editingTransaction}
+          categories={categories}
+          onClose={() => setEditingTransaction(null)}
+          onSubmit={handleUpdateTransaction}
+          loading={loading}
+        />
+      )}
     </div>
   );
 }

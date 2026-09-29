@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { X, Database } from 'lucide-react';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
 
@@ -35,30 +35,28 @@ function UrlModal({ initialUrl, initialToken = '', onClose, onSave }) {
             type="text"
             placeholder="https://script.google.com/macros/s/.../exec"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={e => setUrl(e.target.value)}
             className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-ink text-xs font-mono focus:outline-none"
           />
         </div>
 
         <p className="text-xs text-muted mb-1">
-          API Token（選填）：如 GAS 端已於 Script Properties 設定 <code className="text-ink">GAS_API_TOKEN</code>，需填寫相同 Token 才能讀寫；可留空。
+          API Token（選填）：如 GAS 端已於 Script Properties 設定 <code className="text-ink">GAS_API_TOKEN</code>
+          ，需填寫相同 Token 才能讀寫；可留空。
         </p>
         <div className="pixel-border-sm p-0.5 mb-4">
           <input
             type="text"
             placeholder="輸入口令 Token"
             value={token}
-            onChange={(e) => setToken(e.target.value)}
+            onChange={e => setToken(e.target.value)}
             autoComplete="off"
             spellCheck={false}
             className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-ink text-xs font-mono focus:outline-none"
           />
         </div>
 
-        <button
-          onClick={handleSave}
-          className="pixel-button-primary w-full py-2"
-        >
+        <button onClick={handleSave} className="pixel-button-primary w-full py-2">
           儲存並連線
         </button>
       </div>

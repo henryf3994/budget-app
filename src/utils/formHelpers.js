@@ -6,7 +6,7 @@ export const resolveCustomPaymentState = (formData = {}) => {
   const isCustomPayment = !!paymentValue && !PAYMENT_METHODS.includes(paymentValue);
 
   return {
-    paymentMethod: isCustomPayment ? PAYMENT_METHODS[0] : (paymentValue || PAYMENT_METHODS[0]),
+    paymentMethod: isCustomPayment ? PAYMENT_METHODS[0] : paymentValue || PAYMENT_METHODS[0],
     customPaymentMethod: isCustomPayment ? paymentValue : '',
     isCustomPayment
   };

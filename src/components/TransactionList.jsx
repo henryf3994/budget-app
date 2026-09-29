@@ -1,11 +1,12 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { X, FileText, Edit3, Trash2 } from 'lucide-react';
 import {
+  DEFAULT_CATEGORY_NAME,
   getPayerStyle,
   getPaymentMethodStyle,
-  CATEGORY_FILTER_ALL,
+  CATEGORY_FILTER_ALL
 } from '../utils/constants.js';
-import { buildCategoryColorMap, formatMoney } from '../utils/listHelpers.js';
+import { buildCategoryColorMap, formatMoney, getCategoryColorFromMap } from '../utils/listHelpers.js';
 
 // =========================================================================
 // 📁 src/components/TransactionList.jsx
@@ -20,14 +21,9 @@ function TransactionList({
   searchQuery,
   onSearchChange,
   onEdit,
-  onDelete,
+  onDelete
 }) {
-  const categoryColorById = useMemo(
-    () => buildCategoryColorMap(categories),
-    [categories]
-  );
-
-  const getCategoryColor = (catName) => categoryColorById.get(catName) || categoryColorById.get('其他');
+  const categoryColorById = useMemo(() => buildCategoryColorMap(categories), [categories]);
 
   return (
     <div className="pixel-card bg-surface overflow-hidden">
@@ -55,19 +51,21 @@ function TransactionList({
               type="text"
               placeholder="搜尋項目/付款人/備註..."
               value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
+              onChange={e => onSearchChange(e.target.value)}
               className="relative z-0 w-full sm:w-64 bg-surface-soft border-0 rounded-none text-ink text-sm pl-3 pr-3 py-2 focus:outline-none focus:border-primary"
             />
           </div>
           <div className="pixel-border-sm p-0.5">
             <select
               value={selectedCategoryFilter}
-              onChange={(e) => onCategoryFilterChange(e.target.value)}
+              onChange={e => onCategoryFilterChange(e.target.value)}
               className="relative z-0 w-full bg-surface-soft border-0 rounded-none text-ink text-sm px-3 py-2 focus:outline-none focus:border-primary"
             >
               <option value={CATEGORY_FILTER_ALL}>所有類別</option>
               {categories.map(c => (
-                <option key={c.id} value={c.name}>{c.name}</option>
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
               ))}
             </select>
           </div>
@@ -75,7 +73,7 @@ function TransactionList({
             <select
               aria-label="排序交易"
               value={transactionSort}
-              onChange={(e) => onTransactionSortChange(e.target.value)}
+              onChange={e => onTransactionSortChange(e.target.value)}
               className="relative z-0 w-full bg-surface-soft border-0 rounded-none text-ink text-sm px-3 py-2 focus:outline-none focus:border-primary"
             >
               <option value="date-desc">最新付款日期</option>
@@ -96,15 +94,22 @@ function TransactionList({
           </div>
         ) : (
           transactions.map((item, idx) => {
-            const catColor = getCategoryColor(item.category);
+            const catColor = getCategoryColorFromMap(categoryColorById, item.category);
             return (
-              <div key={item.id || idx} className="transaction-row relative p-4 pl-6 hover:bg-surface-warm transition-colors flex flex-col gap-2">
-                <div aria-hidden="true" className="expense-indicator transaction-expense-indicator absolute inset-y-0 left-0" style={{ backgroundColor: catColor }} />
+              <div
+                key={item.id || idx}
+                className="transaction-row relative p-4 pl-6 hover:bg-surface-warm transition-colors flex flex-col gap-2"
+              >
+                <div
+                  aria-hidden="true"
+                  className="expense-indicator transaction-expense-indicator absolute inset-y-0 left-0"
+                  style={{ backgroundColor: catColor }}
+                />
                 <div className="flex items-center justify-between gap-3 min-w-0">
                   <div className="flex items-center flex-wrap gap-1.5 min-w-0">
                     <span className="text-xl font-semibold text-ink break-words">{item.title}</span>
                     <span className="transaction-category-name text-base font-semibold" style={{ color: catColor }}>
-                      {item.category || '其他'}
+                      {item.category || DEFAULT_CATEGORY_NAME}
                     </span>
                   </div>
                   <span className="text-xl text-muted tabular-nums whitespace-nowrap shrink-0">{item.date}</span>
@@ -113,12 +118,16 @@ function TransactionList({
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-xs text-muted flex items-center flex-wrap gap-x-2 gap-y-0.5 min-w-0">
                     {item.payer && (
-                      <span className={`pixel-border-sm text-base px-1.5 py-0.2 rounded-pixel-sm font-medium ${getPayerStyle(item.payer, 'button')}`}>
+                      <span
+                        className={`pixel-border-sm text-base px-1.5 py-0.2 rounded-pixel-sm font-medium ${getPayerStyle(item.payer, 'button')}`}
+                      >
                         {item.payer}
                       </span>
                     )}
                     {item.paymentMethod && (
-                      <span className={`pixel-border-sm text-base px-1.5 py-0.2 rounded-pixel-sm font-medium ${getPaymentMethodStyle(item.paymentMethod, 'button')}`}>
+                      <span
+                        className={`pixel-border-sm text-base px-1.5 py-0.2 rounded-pixel-sm font-medium ${getPaymentMethodStyle(item.paymentMethod, 'button')}`}
+                      >
                         {item.paymentMethod}
                       </span>
                     )}
@@ -130,32 +139,32 @@ function TransactionList({
                     )}
                   </div>
 
-                <div className="flex items-center justify-end gap-3 shrink-0">
-                  <div className="font-pixel text-pixel-lg text-ink text-left tabular-nums break-words">
-                    - HK$ {formatMoney(item.amount, 1, 1)}
-                  </div>
+                  <div className="flex items-center justify-end gap-3 shrink-0">
+                    <div className="font-pixel text-pixel-lg text-ink text-left tabular-nums break-words">
+                      - HK$ {formatMoney(item.amount, 1, 1)}
+                    </div>
 
-                  <div className="flex items-center space-x-1 border-l-2 border-ink/20 pl-3">
-                    <button
-                      onClick={() => onEdit(item)}
-                      className="transaction-action-button p-1.5 rounded-pixel-sm text-ink-soft"
-                      type="button"
-                      aria-label="編輯"
-                      title="編輯"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => onDelete(item.id)}
-                      className="transaction-action-button transaction-delete-button p-1.5 rounded-pixel-sm text-danger"
-                      type="button"
-                      aria-label="刪除"
-                      title="刪除"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center space-x-1 border-l-2 border-ink/20 pl-3">
+                      <button
+                        onClick={() => onEdit(item)}
+                        className="transaction-action-button p-1.5 rounded-pixel-sm text-ink-soft"
+                        type="button"
+                        aria-label="編輯"
+                        title="編輯"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onDelete(item.id)}
+                        className="transaction-action-button transaction-delete-button p-1.5 rounded-pixel-sm text-danger"
+                        type="button"
+                        aria-label="刪除"
+                        title="刪除"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
                 </div>
               </div>
             );

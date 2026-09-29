@@ -1,21 +1,16 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { X, Edit3, Calendar } from 'lucide-react';
-import { PAYERS, PAYMENT_METHODS, getPaymentMethodStyle } from '../../utils/constants.js';
+import { DEFAULT_CATEGORY_NAME, PAYERS, PAYMENT_METHODS, getPaymentMethodStyle } from '../../utils/constants.js';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
 import { buildSubmittedFormData, resolveCustomPaymentState } from '../../utils/formHelpers.js';
 import { validateTransactionFields } from '../../utils/validation.js';
+import { getPayerAvatar } from '../../utils/payerAvatars.js';
 import MiniCalendar from '../MiniCalendar.jsx';
-import fmhAvatar from '../../assets/fmh.png';
-import yskAvatar from '../../assets/ysk.png';
 
 // =========================================================================
 // 📁 src/components/modals/EditTransactionModal.jsx
 // =========================================================================
 function EditTransactionModal({ transaction, categories, onClose, onSubmit, loading }) {
-  const payerAvatars = {
-    YSK: yskAvatar,
-    FMH: fmhAvatar
-  };
   const safeCategories = Array.isArray(categories) ? categories : [];
   const [formData, setFormData] = useState(() => {
     const resolved = resolveCustomPaymentState(transaction || {});
@@ -30,7 +25,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
   const modalRef = useRef(null);
   useOnClickOutside(modalRef, onClose);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = e => {
     e.preventDefault();
 
     const errors = validateTransactionFields(formData);
@@ -47,7 +42,8 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
         ref={modalRef}
-        className="edit-transaction-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+        className="edit-transaction-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto"
+      >
         <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-ink">
           <X className="w-5 h-5" />
         </button>
@@ -74,7 +70,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
             {showCalendar && (
               <MiniCalendar
                 selectedDate={formData.date || ''}
-                onSelect={(date) => {
+                onSelect={date => {
                   setFormData({ ...formData, date });
                   setFieldErrors(prev => ({ ...prev, date: '' }));
                   setShowCalendar(false);
@@ -87,13 +83,15 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
           <div>
             <label className="block text-xs font-medium text-muted mb-1">金額</label>
             <div className="pixel-border-sm relative p-0.5">
-              <span className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted text-sm font-semibold">HK$</span>
+              <span className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted text-sm font-semibold">
+                HK$
+              </span>
               <input
                 type="number"
                 step="0.01"
                 required
                 value={formData.amount || ''}
-                onChange={(e) => {
+                onChange={e => {
                   setFormData({ ...formData, amount: e.target.value });
                   setFieldErrors(prev => ({ ...prev, amount: '' }));
                 }}
@@ -109,14 +107,18 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
             <label className="block text-xs font-medium text-muted mb-1">類別</label>
             <div className="pixel-border-sm p-0.5">
               <select
-                value={formData.category || (safeCategories[0]?.name || '其他')}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                value={formData.category || safeCategories[0]?.name || DEFAULT_CATEGORY_NAME}
+                onChange={e => setFormData({ ...formData, category: e.target.value })}
                 className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-ink text-sm focus:outline-none focus:border-primary"
               >
-                {safeCategories.length > 0 ? safeCategories.map(c => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                )) : (
-                  <option value="其他">其他</option>
+                {safeCategories.length > 0 ? (
+                  safeCategories.map(c => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))
+                ) : (
+                  <option value={DEFAULT_CATEGORY_NAME}>{DEFAULT_CATEGORY_NAME}</option>
                 )}
               </select>
             </div>
@@ -130,7 +132,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
                 required
                 maxLength={50}
                 value={formData.title || ''}
-                onChange={(e) => {
+                onChange={e => {
                   setFormData({ ...formData, title: e.target.value });
                   setFieldErrors(prev => ({ ...prev, title: '' }));
                 }}
@@ -157,7 +159,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
                 >
                   <img
                     className={`h-12 w-full object-contain ${p === 'FMH' ? 'scale-110' : ''}`}
-                    src={payerAvatars[p]}
+                    src={getPayerAvatar(p)}
                     alt={p}
                   />
                 </button>
@@ -188,7 +190,7 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
               maxLength={30}
               placeholder="自訂其他付款方式..."
               value={formData.customPaymentMethod || ''}
-              onChange={(e) => {
+              onChange={e => {
                 setFormData({
                   ...formData,
                   customPaymentMethod: e.target.value,
@@ -200,7 +202,9 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
                 formData.isCustomPayment ? 'border-danger bg-surface-warm' : 'border-ink'
               } ${fieldErrors.customPaymentMethod ? 'border-danger' : ''}`}
             />
-            {fieldErrors.customPaymentMethod && <p className="text-[11px] text-danger mt-1">{fieldErrors.customPaymentMethod}</p>}
+            {fieldErrors.customPaymentMethod && (
+              <p className="text-[11px] text-danger mt-1">{fieldErrors.customPaymentMethod}</p>
+            )}
           </div>
 
           <div>
@@ -210,25 +214,17 @@ function EditTransactionModal({ transaction, categories, onClose, onSubmit, load
                 type="text"
                 maxLength={200}
                 value={formData.note || ''}
-                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                onChange={e => setFormData({ ...formData, note: e.target.value })}
                 className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-ink text-sm focus:outline-none"
               />
             </div>
           </div>
 
           <div className="pt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="pixel-button-accent w-1/2 py-2.5"
-            >
+            <button type="button" onClick={onClose} className="pixel-button-accent w-1/2 py-2.5">
               取消
             </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="pixel-button-primary w-1/2 py-2.5"
-            >
+            <button type="submit" disabled={loading} className="pixel-button-primary w-1/2 py-2.5">
               儲存修改
             </button>
           </div>

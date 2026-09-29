@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { X, Settings, Trash2 } from 'lucide-react';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
+import { createId } from '../../utils/id.js';
 
 // =========================================================================
 // 📁 src/components/modals/CategoryModal.jsx
@@ -33,7 +34,7 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
       .filter(Boolean);
 
     onAddCategory({
-      id: 'cat_' + Date.now(),
+      id: createId('cat_'),
       name: trimmedName,
       color: newCatColor,
       defaultTitles: defaultTitlesArr.length > 0 ? defaultTitlesArr : ['一般支出']
@@ -47,7 +48,8 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
         ref={modalRef}
-        className="category-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+        className="category-modal pixel-card bg-surface-warm max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto"
+      >
         <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-ink">
           <X className="w-5 h-5" />
         </button>
@@ -63,7 +65,7 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
             <input
               type="color"
               value={newCatColor}
-              onChange={(e) => setNewCatColor(e.target.value)}
+              onChange={e => setNewCatColor(e.target.value)}
               className="w-8 h-8 rounded-pixel-sm border-2 border-ink bg-surface-warm cursor-pointer"
             />
             <div className="pixel-border-sm flex-1 p-0.5">
@@ -72,7 +74,7 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
                 maxLength={20}
                 placeholder="類別名稱 (如: 寵物生活)"
                 value={newCatName}
-                onChange={(e) => {
+                onChange={e => {
                   setNewCatName(e.target.value);
                   setErrorMsg('');
                 }}
@@ -87,14 +89,11 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
               maxLength={200}
               placeholder="預設熱門標題，用逗號分隔 (如: 糧食, 診所, 玩具)"
               value={newCatTitles}
-              onChange={(e) => setNewCatTitles(e.target.value)}
+              onChange={e => setNewCatTitles(e.target.value)}
               className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-1.5 text-xs text-ink focus:outline-none"
             />
           </div>
-          <button
-            onClick={handleAdd}
-            className="pixel-button-primary w-full text-xs py-1.5"
-          >
+          <button onClick={handleAdd} className="pixel-button-primary w-full text-xs py-1.5">
             + 新增類別
           </button>
         </div>
@@ -111,7 +110,11 @@ function CategoryModal({ categories, onClose, onAddCategory, onDeleteCategory })
                   </div>
                 </div>
               </div>
-              <button onClick={() => onDeleteCategory(cat.id)} className="transaction-action-button text-danger p-1" title="刪除類別">
+              <button
+                onClick={() => onDeleteCategory(cat.id)}
+                className="transaction-action-button text-danger p-1"
+                title="刪除類別"
+              >
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>

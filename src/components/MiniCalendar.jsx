@@ -13,12 +13,11 @@ import { isValidDate } from '../utils/validation.js';
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
 // 將 (year, month, day) 格式化為 YYYY-MM-DD
-const formatDateStr = (year, month, day) =>
-  `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+const formatDateStr = (year, month, day) => `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
 // selectedDate 為空字串或格式無效時（例如同步資料的日期不合法），
 // 退回「今天所在月份」，避免 new Date(NaN, ...) 顯示「NaN年 NaN月」且日曆空白
-const getInitialViewDate = (selectedDate) => {
+const getInitialViewDate = selectedDate => {
   const str = String(selectedDate || '').slice(0, 10);
   if (isValidDate(str)) {
     const [y, m] = str.split('-').map(Number);
@@ -44,7 +43,7 @@ function MiniCalendar({ selectedDate, onSelect, onClose }) {
   const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
   const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
-  const handleSelect = (day) => {
+  const handleSelect = day => {
     onSelect(formatDateStr(year, month + 1, day));
   };
 
@@ -53,10 +52,7 @@ function MiniCalendar({ selectedDate, onSelect, onClose }) {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   return (
-    <div
-      ref={calendarRef}
-      className="pixel-card absolute z-20 mt-2 bg-surface p-3 w-64"
-    >
+    <div ref={calendarRef} className="pixel-card absolute z-20 mt-2 bg-surface p-3 w-64">
       {/* Header with month navigation */}
       <div className="flex items-center justify-between mb-3">
         <button

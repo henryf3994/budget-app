@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
 /* =========================================
    FMH Budget
    Warm Pixel Family Global Styles
@@ -12,44 +11,43 @@
   color-scheme: light;
 
   /* Canvas */
-  --color-canvas: #FFF6E5;
-  --color-surface: #FFFFFF;
-  --color-surface-soft: #FFFDF8;
-  --color-surface-warm: #FFF9EF;
+  --color-canvas: #fff6e5;
+  --color-surface: #ffffff;
+  --color-surface-soft: #fffdf8;
+  --color-surface-warm: #fff9ef;
 
   /* Brand */
-  --color-primary: #F28C77;
-  --color-primary-dark: #D96F61;
-  --color-secondary: #6FB7B2;
-  --color-secondary-dark: #4E9692;
+  --color-primary: #f28c77;
+  --color-primary-dark: #d96f61;
+  --color-secondary: #6fb7b2;
+  --color-secondary-dark: #4e9692;
 
-  --color-accent: #FAD02C;
-  --color-accent-dark: #D9AE16;
+  --color-accent: #fad02c;
+  --color-accent-dark: #d9ae16;
 
   /* Typography / Icons */
-  --color-ink: #2A2356;
-  --color-ink-soft: #554F70;
-  --color-muted: #8F8995;
-  --color-muted-warm: #A69D91;
+  --color-ink: #2a2356;
+  --color-ink-soft: #554f70;
+  --color-muted: #8f8995;
+  --color-muted-warm: #a69d91;
 
   /* Status */
-  --color-success: #78B88A;
-  --color-danger: #E56B6F;
+  --color-success: #78b88a;
+  --color-danger: #e56b6f;
 
   /* Pixel system */
-  --border-pixel: 2px solid #2A2356;
-  --border-pixel-thick: 4px solid #2A2356;
+  --border-pixel: 2px solid #2a2356;
+  --border-pixel-thick: 4px solid #2a2356;
 
-  --shadow-pixel: 2px 3px 0 #2A2356;
-  --shadow-pixel-sm: 1px 2px 0 #2A2356;
-  --shadow-pixel-lg: 3px 4px 0 #2A2356;
+  --shadow-pixel: 2px 3px 0 #2a2356;
+  --shadow-pixel-sm: 1px 2px 0 #2a2356;
+  --shadow-pixel-lg: 3px 4px 0 #2a2356;
 
   /* Radius */
   --radius-sm: 8px;
   --radius-card: 14px;
   --radius-lg: 18px;
 }
-
 
 /* =========================================
    Base
@@ -72,8 +70,8 @@ body {
     ui-sans-serif,
     system-ui,
     -apple-system,
-    "PingFang TC",
-    "Microsoft JhengHei",
+    'PingFang TC',
+    'Microsoft JhengHei',
     sans-serif;
 
   -webkit-font-smoothing: antialiased;
@@ -81,7 +79,6 @@ body {
 
   text-rendering: optimizeLegibility;
 }
-
 
 /* =========================================
    Selection
@@ -91,7 +88,6 @@ body {
   background: rgba(242, 140, 119, 0.35);
   color: var(--color-ink);
 }
-
 
 /* =========================================
    Interactive elements
@@ -115,7 +111,6 @@ textarea:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
-
 
 /* =========================================
    Inputs
@@ -143,15 +138,13 @@ textarea:focus {
   border-color: var(--color-primary);
 }
 
-
 /* =========================================
    Pixel UI utilities
    ========================================= */
 
 @layer components {
-
   .overview-font {
-    font-family: "Fusion Pixel", monospace;
+    font-family: 'Fusion Pixel', monospace;
     font-weight: 400;
   }
 
@@ -206,42 +199,70 @@ textarea:focus {
   .pixel-border-sm::before,
   .pixel-border-sm::after {
     clip-path: polygon(
-      3px 0, calc(100% - 3px) 0,
-      calc(100% - 3px) 2px, 100% 2px,
-      100% calc(100% - 2px), calc(100% - 3px) calc(100% - 2px),
-      calc(100% - 3px) 100%, 3px 100%,
-      3px calc(100% - 2px), 0 calc(100% - 2px),
-      0 2px, 3px 2px
+      3px 0,
+      calc(100% - 3px) 0,
+      calc(100% - 3px) 2px,
+      100% 2px,
+      100% calc(100% - 2px),
+      calc(100% - 3px) calc(100% - 2px),
+      calc(100% - 3px) 100%,
+      3px 100%,
+      3px calc(100% - 2px),
+      0 calc(100% - 2px),
+      0 2px,
+      3px 2px
     );
   }
 
   .pixel-border::before,
   .pixel-border::after {
     clip-path: polygon(
-      6px 0, calc(100% - 6px) 0,
-      calc(100% - 6px) 2px, calc(100% - 2px) 2px,
-      calc(100% - 2px) 6px, 100% 6px,
-      100% calc(100% - 6px), calc(100% - 2px) calc(100% - 6px),
-      calc(100% - 2px) calc(100% - 2px), calc(100% - 6px) calc(100% - 2px),
-      calc(100% - 6px) 100%, 6px 100%,
-      6px calc(100% - 2px), 2px calc(100% - 2px),
-      2px calc(100% - 6px), 0 calc(100% - 6px),
-      0 6px, 2px 6px, 2px 2px, 6px 2px
+      6px 0,
+      calc(100% - 6px) 0,
+      calc(100% - 6px) 2px,
+      calc(100% - 2px) 2px,
+      calc(100% - 2px) 6px,
+      100% 6px,
+      100% calc(100% - 6px),
+      calc(100% - 2px) calc(100% - 6px),
+      calc(100% - 2px) calc(100% - 2px),
+      calc(100% - 6px) calc(100% - 2px),
+      calc(100% - 6px) 100%,
+      6px 100%,
+      6px calc(100% - 2px),
+      2px calc(100% - 2px),
+      2px calc(100% - 6px),
+      0 calc(100% - 6px),
+      0 6px,
+      2px 6px,
+      2px 2px,
+      6px 2px
     );
   }
 
   .pixel-border-lg::before,
   .pixel-border-lg::after {
     clip-path: polygon(
-      8px 0, calc(100% - 8px) 0,
-      calc(100% - 8px) 2px, calc(100% - 4px) 2px,
-      calc(100% - 4px) 6px, 100% 6px,
-      100% calc(100% - 6px), calc(100% - 4px) calc(100% - 6px),
-      calc(100% - 4px) calc(100% - 2px), calc(100% - 8px) calc(100% - 2px),
-      calc(100% - 8px) 100%, 8px 100%,
-      8px calc(100% - 2px), 4px calc(100% - 2px),
-      4px calc(100% - 6px), 0 calc(100% - 6px),
-      0 6px, 4px 6px, 4px 2px, 8px 2px
+      8px 0,
+      calc(100% - 8px) 0,
+      calc(100% - 8px) 2px,
+      calc(100% - 4px) 2px,
+      calc(100% - 4px) 6px,
+      100% 6px,
+      100% calc(100% - 6px),
+      calc(100% - 4px) calc(100% - 6px),
+      calc(100% - 4px) calc(100% - 2px),
+      calc(100% - 8px) calc(100% - 2px),
+      calc(100% - 8px) 100%,
+      8px 100%,
+      8px calc(100% - 2px),
+      4px calc(100% - 2px),
+      4px calc(100% - 6px),
+      0 calc(100% - 6px),
+      0 6px,
+      4px 6px,
+      4px 2px,
+      8px 2px
     );
   }
 
@@ -268,7 +289,6 @@ textarea:focus {
     --payer-border-color: #7c3aed;
   }
 
-
   /*
    * Primary CTA
    */
@@ -278,7 +298,7 @@ textarea:focus {
     justify-content: center;
 
     background: var(--color-primary);
-    color: #FFFFFF;
+    color: #ffffff;
 
     border: var(--border-pixel);
     border-radius: 9999px;
@@ -302,7 +322,6 @@ textarea:focus {
     transform: translate(1px, 2px);
     box-shadow: var(--shadow-pixel-sm);
   }
-
 
   /*
    * Secondary / recurring expense CTA
@@ -338,7 +357,6 @@ textarea:focus {
     box-shadow: var(--shadow-pixel-sm);
   }
 
-
   /*
    * Pixel KPI / money display
    *
@@ -346,14 +364,11 @@ textarea:focus {
    * font is actually loaded.
    */
   .pixel-number {
-    font-family:
-      "Fusion Pixel",
-      monospace;
+    font-family: 'Fusion Pixel', monospace;
 
     font-weight: normal;
     letter-spacing: 0.01em;
   }
-
 
   /*
    * Expense card left indicator
@@ -367,7 +382,9 @@ textarea:focus {
   .transaction-row {
     background: var(--color-surface);
     border-bottom: 2px solid rgba(42, 35, 86, 0.1);
-    transition: background-color 140ms ease, border-color 140ms ease;
+    transition:
+      background-color 140ms ease,
+      border-color 140ms ease;
   }
 
   .transaction-row:last-child {
@@ -458,14 +475,13 @@ textarea:focus {
   }
 }
 
-
 /* =========================================
    Scrollbar
    ========================================= */
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #D8CFC0 transparent;
+  scrollbar-color: #d8cfc0 transparent;
 }
 
 *::-webkit-scrollbar {
@@ -478,14 +494,13 @@ textarea:focus {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: #D8CFC0;
+  background: #d8cfc0;
   border-radius: 9999px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: #BDB2A2;
+  background: #bdb2a2;
 }
-
 
 /* =========================================
    Reduced motion
@@ -502,11 +517,9 @@ textarea:focus {
   }
 }
 
-
 @font-face {
-  font-family: "Fusion Pixel";
-  src: url("./assets/fonts/fusion-pixel-10px-proportional-zh_hant.otf.woff2")
-    format("woff2");
+  font-family: 'Fusion Pixel';
+  src: url('./assets/fonts/fusion-pixel-10px-proportional-zh_hant.otf.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
