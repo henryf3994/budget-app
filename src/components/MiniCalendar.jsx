@@ -6,11 +6,19 @@ import { isValidDate } from '../utils/validation.js';
 
 // =========================================================================
 // 📁 src/components/MiniCalendar.jsx
-// Mini calendar popup for date selection
+// Mini calendar component
+//   mode="date"       → popup date picker (YYYY-MM-DD)
+//   mode="dayOfMonth" → inline day-of-month picker (1–31)
 // =========================================================================
 
 // 一週的星期標題（由星期日開始）
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+
+// dayOfMonth 模式一次顯示的日數（每月扣款日固定為 1–31）
+const DAYS_IN_MONTH_MAX = 31;
+
+// dayOfMonth 模式為行內展開（非彈出），不需要點擊外部關閉
+const noop = () => {};
 
 // 將 (year, month, day) 格式化為 YYYY-MM-DD
 const formatDateStr = (year, month, day) => `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -27,11 +35,41 @@ const getInitialViewDate = selectedDate => {
   return new Date(now.getFullYear(), now.getMonth(), 1);
 };
 
-function MiniCalendar({ selectedDate, onSelect, onClose }) {
+// mode="date"：選擇完整日期（YYYY-MM-DD，預設彈出式日曆）
+// mode="dayOfMonth"：選擇每月扣款日（1–31，行內展開，與月份／星期無關）
+function MiniCalendar({ selectedDate, onSelect, onClose, mode = 'date', selectedDay = 1 }) {
   const [viewDate, setViewDate] = useState(() => getInitialViewDate(selectedDate));
 
   const calendarRef = useRef(null);
-  useOnClickOutside(calendarRef, onClose);
+  useOnClickOutside(calendarRef, mode === 'dayOfMonth' ? noop : onClose);
+
+  // dayOfMonth 模式：直接列出 1–31，供恆常開支選擇每月扣款日
+  if (mode === 'dayOfMonth') {
+    const activeDay = Number(selectedDay);
+    return (
+      <div ref={calendarRef} className="pixel-card bg-surface p-3 w-64">
+        <div className="flex items-center justify-center mb-3">
+          <span className="text-sm font-semibold text-ink">選擇扣款日</span>
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: DAYS_IN_MONTH_MAX }, (_, i) => i + 1).map(day => (
+            <button
+              key={day}
+              type="button"
+              onClick={() => onSelect(day)}
+              className={`w-8 h-8 rounded-pixel-sm text-xs flex items-center justify-center transition ${
+                day === activeDay
+                  ? 'bg-primary text-white font-bold shadow-pixel-sm'
+                  : 'text-ink-soft hover:bg-surface-warm hover:text-ink'
+              }`}
+            >
+              {day}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();

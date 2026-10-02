@@ -52,7 +52,7 @@ src/
     TransactionList.jsx      # 交易明細＋搜尋／排序／類別篩選
     RecurringExpenseList.jsx # 恆常開支列表
     SettingsPage.jsx         # 設定頁
-    MiniCalendar.jsx         # 日期選擇器
+    MiniCalendar.jsx         # 日期選擇器／每月扣款日選擇（1–31）
     modals/                  # 各對話框（新增／編輯交易、恆常開支、類別、URL）
   hooks/useOnClickOutside.js # 點擊外部關閉
   utils/                     # 純函數：驗證、篩選、格式化、GAS API、storage 等
@@ -129,6 +129,7 @@ src/
 | `addRecurring`      | `amount`、`category`、`title`、`payer`、`paymentMethod`、`dayOfMonth`（1–31） | 新增恆常開支（`frequency` 固定 `Monthly`） |
 | `editRecurring`     | `id` ＋ 上述欄位                                                              | 更新恆常開支                               |
 | `deleteRecurring`   | `id`                                                                          | 刪除恆常開支                               |
+| `processRecurring`  | （無，只需帶 `action`）                                                       | 隨選補回當月恆常開支交易（回傳 `created`、`createdIds`） |
 
 回傳格式：
 
@@ -157,6 +158,18 @@ src/
 > **注意**：`google_apps_script`（GAS 後端，含 `doGet` / `doPost` / `processRecurringExpenses`）
 > 目前被 `.gitignore` 忽略、未納入版控。Token 透過 GAS Script Properties 提供，不寫在程式碼中；
 > 建議將該檔案移入 `server/` 並取消忽略，讓 API 契約與實作一起版控。
+
+### 恆常開支自動扣帳
+
+- 由 GAS 的每日定時觸發器 `processRecurringExpenses` 負責（對應 `setupDailyTrigger()`，每天約 01:00 執行）。
+- **首次部署必須在 Apps Script 手動建立觸發器**：於編輯器選擇 `setupDailyTrigger` → 「執行」一次，
+  或在「觸發條件」頁新增：要執行的功能選 `processRecurringExpenses`、活動來源「時間驅動」、
+  活動類型「日計時器」。請確認 Apps Script 專案時區與試算表時區一致。
+- 扣帳規則：只要「今天」已到達當月應扣日（含已過去、漏跑後補回），就會在該月產生一筆交易，
+  日期對齊真正的應扣日（例如扣款日 1 號即 `YYYY-MM-01`）；若指定日超出當月天數（例如 31 號遇到短月），
+  順延至當月最後一天。以 `${recurringId}|YYYY-MM` 去重，同一恆常開支每月最多一筆，漏跑不會漏掉整個月。
+- 想立即產生（不必等每日觸發器）可送出 `POST { "action": "processRecurring" }`，回傳 `created` 與 `createdIds`。
+- 注意：由於採「補回」邏輯，若在當月應扣日之後才新增恆常開支，下一次執行會**立即補上當月那一筆**。
 
 ## 開發慣例
 

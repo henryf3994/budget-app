@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react';
-import { X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw, Calendar } from 'lucide-react';
 import { DEFAULT_CATEGORY_NAME, PAYERS, PAYMENT_METHODS, getPaymentMethodStyle } from '../../utils/constants.js';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside.js';
 import { buildSubmittedFormData, resolveCustomPaymentState } from '../../utils/formHelpers.js';
 import { validateRecurringFields } from '../../utils/validation.js';
 import { getPayerAvatar } from '../../utils/payerAvatars.js';
+import MiniCalendar from '../MiniCalendar.jsx';
 
 // =========================================================================
 // 📁 src/components/modals/RecurringModal.jsx
@@ -57,6 +58,7 @@ function RecurringModal({ categories = [], onClose, onAdd, loading, initialRecur
 
   const [newRec, setNewRec] = useState(isEditing ? createInitialRecurring : createEmptyRecurring);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [showDayCalendar, setShowDayCalendar] = useState(false);
 
   const handleSubmit = e => {
     e.preventDefault();
@@ -225,25 +227,32 @@ function RecurringModal({ categories = [], onClose, onAdd, loading, initialRecur
             )}
           </div>
 
-          <div>
+          <div className="relative">
             <label className="block text-lg font-medium text-muted mb-1">每月扣款日</label>
-            <div className="flex items-center gap-2">
-              <div className="pixel-border-sm flex-1 p-0.5">
-                <input
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={newRec.dayOfMonth}
-                  onChange={e => {
-                    setNewRec({ ...newRec, dayOfMonth: e.target.value });
+            <button
+              type="button"
+              onClick={() => setShowDayCalendar(prev => !prev)}
+              className={`pixel-border-sm w-full bg-surface-soft border-2 rounded-pixel-sm px-3 py-2 text-ink text-sm focus:outline-none flex items-center justify-between ${
+                fieldErrors.dayOfMonth ? 'border-danger' : 'border-ink hover:border-primary'
+              }`}
+            >
+              <span>每月 {newRec.dayOfMonth} 號</span>
+              <Calendar className="w-4 h-4 text-muted" />
+            </button>
+            {fieldErrors.dayOfMonth && <p className="text-[11px] text-danger mt-1">{fieldErrors.dayOfMonth}</p>}
+            {showDayCalendar && (
+              <div className="mt-2">
+                <MiniCalendar
+                  mode="dayOfMonth"
+                  selectedDay={newRec.dayOfMonth}
+                  onSelect={day => {
+                    setNewRec({ ...newRec, dayOfMonth: day });
                     setFieldErrors(prev => ({ ...prev, dayOfMonth: '' }));
+                    setShowDayCalendar(false);
                   }}
-                  className="relative z-0 w-full bg-surface-soft border-0 rounded-none px-3 py-2 text-[21px] text-ink text-center focus:outline-none"
                 />
               </div>
-              <span className="text-[21px] text-muted shrink-0">號</span>
-            </div>
-            {fieldErrors.dayOfMonth && <p className="text-[11px] text-danger mt-1">{fieldErrors.dayOfMonth}</p>}
+            )}
           </div>
 
           <div>
